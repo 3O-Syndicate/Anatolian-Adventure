@@ -1,7 +1,7 @@
-﻿"""
+"""
 main.py
 
-Project: Campus Mayhem
+Project: Anatolian Adventure
 Description:
 	This is the main entry point for the application. It orchestrates the game loop,
 	manages global game states (Start Menu, Gameplay, Pause, Game Over), and handles
@@ -23,7 +23,7 @@ from settings import *
 # Import game modules
 from player import Player
 from ui import UI
-from test import Button
+from button import Button
 from game_level import GameLevel
 import assets
 
@@ -145,9 +145,9 @@ def main():
 
 	def display_end_screen(score):
 		"""Renders the Game Over or Victory screen."""
-		G.screen.fill((40,40,40))
-		G.screen.blit(necromancer_image, necromancer_image_rect)
-		G.screen.blit(nightborne_image, nightborne_image_rect)
+		G.screen.fill((0,0,0))
+		# G.screen.blit(necromancer_image, necromancer_image_rect)
+		# G.screen.blit(nightborne_image, nightborne_image_rect)
 		G.screen.blit(coin_image, coin_image_rect)
 		if beat_game:
 			beat_game_surface = font.render("You Win! Thanks for playing!", True, WHITE)
@@ -158,18 +158,18 @@ def main():
 
 		text_surface = font.render("> Press 'P' to play again", True, YELLOW)
 
-		text_1 = font.render(f"You killed:", True, WHITE)
-		text_2 = font.render(f"{game_stats['necromancer_death_count']} x", True, WHITE)
-		text_3 = font.render(f"{game_stats['nightborne_death_count']} x", True, WHITE)
-		text_4 = font.render(f"You collected:", True, WHITE)
-		text_5 = font.render(f"{game_stats['coins']} x", True, WHITE)
+		# text_1 = font.render(f"You killed:", True, WHITE)
+		# text_2 = font.render(f"{game_stats['necromancer_death_count']} x", True, WHITE)
+		# text_3 = font.render(f"{game_stats['nightborne_death_count']} x", True, WHITE)
+		# text_4 = font.render(f"You collected:", True, WHITE)
+		# text_5 = font.render(f"{game_stats['coins']} x", True, WHITE)
 
-		G.screen.blit(text_surface, (WIDTH / 2 - 150, HEIGHT * 7 / 8))
-		G.screen.blit(text_1, (100, 150))
-		G.screen.blit(text_2, (100, 250))
-		G.screen.blit(text_3, (100, 350))
-		G.screen.blit(text_4, (100, 450))
-		G.screen.blit(text_5, (100, 530))
+		# G.screen.blit(text_surface, (WIDTH / 2 - 150, HEIGHT * 7 / 8))
+		# G.screen.blit(text_1, (100, 150))
+		# G.screen.blit(text_2, (100, 250))
+		# G.screen.blit(text_3, (100, 350))
+		# G.screen.blit(text_4, (100, 450))
+		# G.screen.blit(text_5, (100, 530))
 		score_text_1 = font.render(f"Your score:", False, WHITE)
 		score_text_2 = score_font.render(f"{score:,}", False, WHITE)
 		G.screen.blit(score_text_1, (550, 150))
@@ -225,7 +225,7 @@ def main():
 
 
 
-		title_surf = title_font.render("CAMPUS MAYHEM", True, RED)
+		title_surf = title_font.render("Anatolian Adventure", True, RED)
 		title_rect = title_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100))
 
 		# Blinking text effect
@@ -316,26 +316,8 @@ def main():
 									G.screen.blit(G.plain_bg, (0,j*144), rect)
 									pygame.display.update()
 
-				elif game_stats['enemies_killed_or_removed'] == game_stats["number_of_enemies"][game_stats["current_wave"] - 1]:
-					# All enemies are killed on current wave
-					game_stats["enemies_killed_or_removed"] = 0
-					for i in game_level.sect_boundaries[game_stats["current_wave"]-1]:
-						i.kill()
-					if game_stats["current_wave"] == len(game_stats["number_of_enemies"]):
-						# Level is done.
-						level_done = True
-						game_level.next_lvl_trigger_active = True
-						if game_stats["current_level"]==4:
-							# Game is over too
-							beat_game = True
-							game_active = False
-					else:
-						# There are still waves to go
-						game_stats["current_wave"] += 1
-						game_level.spawn_enemies()
-
 				score = game_stats["score"]
-				pygame.display.set_caption(f"Campus Mayhem | FPS: {clock.get_fps():.0f} | Score: {score}")
+				pygame.display.set_caption(f"Anatolian Adventure | FPS: {clock.get_fps():.0f} | Score: {score}")
 			else:
 				display_pause_screen()
 

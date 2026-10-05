@@ -35,8 +35,8 @@ class Player(pygame.sprite.Sprite):
         # Movement Stats
         self.velocity_x = 0
         self.velocity_y = 0
-        self.stamina = 200
         self.is_running = False
+        self.direction = 0 # 0 = left, 1 = right
 
         # --- WEAPON & AMMO SYSTEM ---
         self.is_shooting = False
@@ -56,41 +56,34 @@ class Player(pygame.sprite.Sprite):
 
     def player_turning(self):
         """Rotates the player sprite to face the mouse cursor."""
-        self.mouse_coords = pygame.mouse.get_pos()
-        self.x_change_mouse_player = (self.mouse_coords[0] - (G.WIDTH // 2))
-        self.y_change_mouse_player = (self.mouse_coords[1] - (G.HEIGHT // 2))
-        self.angle = int(math.degrees(math.atan2(self.y_change_mouse_player, self.x_change_mouse_player))%360)
-
-        self.image = pygame.transform.rotate(self.base_player_image, -self.angle)
+        if self.direction == 0:
+            self.image = pygame.transform.flip(self.base_player_image, True, False)
+        else:
+            self.image = self.base_player_image
         self.rect = self.image.get_rect(center=self.base_player_rect.center)
 
     def player_input(self):
         # Processes keyboard and mouse events for movement and actions.
         keys = pygame.key.get_pressed()
 
-        if keys[pygame.K_LSHIFT] and ((self.is_running and self.stamina>0) or self.stamina > 40):
-            self.is_running = True
-            self.stamina -= 2
-        else:
-            self.is_running = False
-            if self.stamina < 200: self.stamina += 1
-
         if keys[pygame.K_w]: 
-            if self.velocity_y>0: self.velocity_y*=-1;
-            elif self.velocity_y>-10: self.velocity_y -= 1
+            if(self.velocity_y == 0): self.velocity_y = -30
         elif keys[pygame.K_s]:
-            if self.velocity_y<0: self.velocity_y*=-1;
-            elif self.velocity_y<10: self.velocity_y += 1
+            if(self.velocity_y < 0):
+                self.velocity_y = -self.velocity_y
         elif self.velocity_y:
-            if self.velocity_y>0: self.velocity_y -= 1
-            else: self.velocity_y += 1
+            self.velocity_y += 1
 
         if keys[pygame.K_d]:
             if self.velocity_x<0: self.velocity_x*=-1;
             elif self.velocity_x<10: self.velocity_x += 1
+            self.direction = 1
+            if(self.velocity_y == 0): self.velocity_y = 1
         elif keys[pygame.K_a]:
             if self.velocity_x>0: self.velocity_x*=-1;
             elif self.velocity_x>-10: self.velocity_x -= 1
+            self.direction = 0
+            if(self.velocity_y == 0): self.velocity_y = 1
         elif self.velocity_x:
             if self.velocity_x>0: self.velocity_x -= 1
             else: self.velocity_x += 1
@@ -149,15 +142,6 @@ class Player(pygame.sprite.Sprite):
     def move(self):
         """Applies velocity and resolves collisions."""
 
-        # Tactical Movement: Reduce speed while reloading
-        if self.is_reloading:
-            self.velocity_x /= 2
-            self.velocity_y /= 2
-        # Double speed while running
-        if self.is_running:
-            self.velocity_x *= 2
-            self.velocity_y *= 2
-
         # # Normalize diagonal vector
         # if self.velocity_x != 0 and self.velocity_y != 0:
         #     self.velocity_x /= math.sqrt(2)
@@ -169,12 +153,6 @@ class Player(pygame.sprite.Sprite):
         self.check_collision(False)
 
         # Revert multiplications caused by tactical movements.
-        if self.is_reloading:
-            self.velocity_x *= 2
-            self.velocity_y *= 2
-        if self.is_running:
-            self.velocity_x /= 2
-            self.velocity_y /= 2
 
         self.rect.center = self.base_player_rect.center
         self.vec_pos = (self.base_player_rect.centerx, self.base_player_rect.centery)
@@ -185,11 +163,10 @@ class Player(pygame.sprite.Sprite):
             if G.gun_shot_sound:
                 G.gun_shot_sound.play()
 
-            # Calculate Spread
-            spread = random.uniform(-8, 8)
-            final_angle = self.angle + spread
+            final_angle = 0
+            if(self.direction == 0): final_angle = 180
 
-            spawn_bullet_pos = self.vec_pos + self.gun_barrel_offset.rotate(self.angle)
+            spawn_bullet_pos = self.vec_pos + self.gun_barrel_offset.rotate(final_angle)
             bullet = Bullet(spawn_bullet_pos[0], spawn_bullet_pos[1], final_angle)
 
             G.bullet_group.add(bullet)
@@ -226,8 +203,12 @@ class Player(pygame.sprite.Sprite):
                     if self.velocity_x > 0: self.base_player_rect.right = sprite.rect.left
                     elif self.velocity_x < 0: self.base_player_rect.left = sprite.rect.right
                 else:
-                    if self.velocity_y < 0: self.base_player_rect.top = sprite.rect.bottom
-                    elif self.velocity_y > 0: self.base_player_rect.bottom = sprite.rect.top
+                    if self.velocity_y < 0: 
+                        self.base_player_rect.top = sprite.rect.bottom
+                        self.velocity_y = 1
+                    elif self.velocity_y > 0: 
+                        self.base_player_rect.bottom = sprite.rect.top
+                        self.velocity_y = 0
 
     def update(self):
         self.player_turning()

@@ -83,15 +83,6 @@ class Enemy(pygame.sprite.Sprite):
         """Checks health status and handles death events (score/sound)."""
         if self.health <= 0:
             self.alive = False
-            if self.name == "necromancer":
-                if G.necromancer_death_sound: G.necromancer_death_sound.play()
-                game_stats["necromancer_death_count"] += 1
-                game_stats["score"] += 250
-            if self.name == "nightborne":
-                if G.nightborne_death_sound: G.nightborne_death_sound.play()
-                game_stats["nightborne_death_count"] += 1
-                game_stats["score"] += 100
-            game_stats["enemies_killed_or_removed"] += 1
 
     def import_graphics(self, name):
         """Loads sprite sheets for different states."""
@@ -121,12 +112,6 @@ class Enemy(pygame.sprite.Sprite):
 
     def get_vector_distance(self, vector_1, vector_2):
         return (vector_1 - vector_2).magnitude()
-
-    def cooldowns(self):
-        current_time = pygame.time.get_ticks()
-        if not self.can_attack:
-            if current_time - self.attack_time >= self.attack_cooldown:
-                self.can_attack = True
 
     # --- MOVEMENT & PHYSICS ENGINE ---
     def move_and_collide(self, speed):
@@ -192,7 +177,6 @@ class Enemy(pygame.sprite.Sprite):
         if self.base_zombie_rect.colliderect(G.player.base_player_rect):
             self.kill()
             G.player.get_damage(self.attack_damage)
-            game_stats["enemies_killed_or_removed"] += 1
 
     def ai_necromancer_hunt(self, player_pos, dist):
         """
@@ -248,19 +232,7 @@ class Enemy(pygame.sprite.Sprite):
             self.last_pos = pygame.math.Vector2(self.position)
         return is_stuck
 
-    def draw_enemy_health(self):
-        """Renders a dynamic health bar above the entity."""
-        x, y = self.position
-        if self.health > 60: col = GREEN
-        elif self.health > 30: col = YELLOW
-        else: col = RED
-        width = int(self.base_zombie_rect.width * self.health / 100)
-        pygame.draw.rect(G.screen, col, (x - 40 - G.game_level.offset.x, y - 45 - G.game_level.offset.y, width, 5))
-
     def update(self):
-        self.cooldowns()
-        self.draw_enemy_health()
-
         if self.alive:
             self.check_alive()
 

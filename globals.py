@@ -18,6 +18,7 @@ items_group = pygame.sprite.Group()
 player = None        # instance of Player
 ui = None            # instance of UI
 game_level = None    # instance of GameLevel
+level_num = 1
 
 # Loaded assets that assets.py will set
 sectboundary_img = None

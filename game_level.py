@@ -71,22 +71,17 @@ class GameLevel(pygame.sprite.Group):
 	def spawn_enemies(self):
 		"""Spawn the configured number of enemies for the current wave."""
 		G.enemy_group.empty()
-		self.number_of_enemies = game_stats["number_of_enemies"][game_stats["current_wave"] - 1]
 		enemy_name = ["necromancer", "nightborne"]
-		num_of_enemies_spawned = 0
 		# dynamic import to avoid top-level circular imports
 		from enemy import Enemy
-		while num_of_enemies_spawned < self.number_of_enemies:
-			pos = random.choice(self.enemy_spawn_pos)
-			if pos[1] == game_stats["current_wave"]:
-				Enemy(random.choice(enemy_name), pos[0])
-				num_of_enemies_spawned += 1
+		for i in self.enemy_spawn_pos:
+			Enemy(random.choice(enemy_name), i[0])
 
 	def spawn_health_potions(self):
 		"""Spawn a fixed number of health potions at random positions (based on settings)."""
-		for i in range(game_stats["num_health_potions"]):
+		for i in self.health_spawn_pos:
 			from item import Item
-			Item(random.choice(self.health_spawn_pos), "health potion")
+			Item(i, "health potion")
 
 	def custom_draw(self):
 		"""
@@ -129,10 +124,6 @@ class GameLevel(pygame.sprite.Group):
 		for sprite in G.all_sprites_group:
 			offset_pos = sprite.rect.topleft - self.offset
 			G.screen.blit(sprite.image, offset_pos)
-
-		for i in self.sect_boundaries[game_stats["current_wave"]-1]:
-			offset_pos = i.rect.topleft - self.offset
-			G.screen.blit(i.image, offset_pos)
 
 		# Check if player is triggering a level switch
 		# Normally this should be on player code but its easier to put it here.

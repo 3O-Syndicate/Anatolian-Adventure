@@ -54,7 +54,6 @@ monster_data = {
         "attack_damage": 20,
         "roaming_speed": 2,
         "hunting_speed": [4, 4, 7, 7, 7],
-        # path to a default image (assets.py will load this and set the "image" key)
         "image_path": "necromancer/roam/0.png",
         "image_scale": 1.5,
         "hitbox_rect": ("rect", 0, 0, 75, 100),
@@ -78,30 +77,16 @@ monster_data = {
     },
 }
 
-# Convert hitbox tuple to a pygame.Rect at runtime (assets.py will replace with Rect)
-# but keep the pure-data shape here.
-
-# settings.py dosyasında game_stats sözlüğünü bul:
-
 game_stats = {
-    "enemies_killed_or_removed": 0,
-    "necromancer_death_count": 0,
-    "nightborne_death_count": 0,
     "coins": 0,
     "health_potion_heal": 20,
-    "current_wave": 1,
-    "number_of_enemies": [5, 6, 7],
-    "wave_cooldown": 6000,
-    "num_health_potions": 3,
     "score": 0,
     "current_level" : 0 
 }
 
 items = {
-    # image_path olmayanlar için item.py içinde renkli kare oluşturacağız
     "health potion": {"image_path": "items/health.png", "has_animation": False},
     "coin": {"image_path": "items/coin/0.png", "has_animation": True, "anim_folder": "items/coin"},
 
     "ammo": {"image_path": "items/ammo.png", "has_animation": False}
-    # Not: "items/ammo.png" resmin yoksa item.py'de buna MAVİ KARE çizeceğiz, merak etme.
 }
