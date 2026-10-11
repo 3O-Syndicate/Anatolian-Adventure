@@ -71,11 +71,7 @@ class GameLevel(pygame.sprite.Group):
 	def spawn_enemies(self):
 		"""Spawn the configured number of enemies for the current wave."""
 		G.enemy_group.empty()
-		enemy_name = ["necromancer", "nightborne"]
-		# dynamic import to avoid top-level circular imports
-		from enemy import Enemy
-		for i in self.enemy_spawn_pos:
-			Enemy(random.choice(enemy_name), i[0])
+		
 
 	def spawn_health_potions(self):
 		"""Spawn a fixed number of health potions at random positions (based on settings)."""
@@ -83,11 +79,12 @@ class GameLevel(pygame.sprite.Group):
 			from item import Item
 			Item(i, "health potion")
 
-	def custom_draw(self):
+	def draw(self):
 		"""
 		Draw the world.
 		Koddo Update: Smooth Camera + Mouse Peek (Fare Takibi) eklendi.
 		"""
+		pygame.draw.rect(G.screen, (0,0,0), (0,0,1280,720))
 
 		# --- KAMERA HEDEF HESAPLAMA ---
 

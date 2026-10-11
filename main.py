@@ -28,7 +28,6 @@ from game_level import GameLevel
 import assets
 
 # Ensure other modules are registered
-import enemy  # noqa: F401
 import bullet  # noqa: F401
 import item    # noqa: F401
 
@@ -68,8 +67,6 @@ def reset_for_new_game(level_num, full_reset):
 		sprite.kill()
 
 	if full_reset == True:
-		game_stats["necromancer_death_count"] = 0
-		game_stats["nightborne_death_count"] = 0
 		game_stats["coins"] = 0
 		game_stats["score"] = 0
 		game_stats["current_level"] = 0
@@ -105,22 +102,6 @@ def main():
 	game_level, player, ui = create_game_objects(font)
 
 	# --- Preload Static Assets for Screens ---
-	try:
-		necromancer_image = pygame.image.load("necromancer/sprites/sprite_00.png").convert_alpha()
-		necromancer_image = pygame.transform.rotozoom(necromancer_image, 0, 1.5)
-		necromancer_image_rect = necromancer_image.get_rect(center=(190,225))
-	except Exception:
-		necromancer_image = pygame.Surface((100,100)); necromancer_image.fill((120,0,0))
-		necromancer_image_rect = necromancer_image.get_rect(center=(190,225))
-
-	try:
-		nightborne_image = pygame.image.load("nightborne/sprites/00.png").convert_alpha()
-		nightborne_image = pygame.transform.rotozoom(nightborne_image, 0, 2)
-		nightborne_image_rect = nightborne_image.get_rect(center=(220,340))
-	except Exception:
-		nightborne_image = pygame.Surface((100,100)); nightborne_image.fill((0,120,0))
-		nightborne_image_rect = nightborne_image.get_rect(center=(220,340))
-
 	try:
 		coin_image = pygame.image.load("items/coin/0.png").convert_alpha()
 		coin_image = pygame.transform.rotozoom(coin_image, 0, 4)
@@ -204,42 +185,6 @@ def main():
 		G.screen.blit(info_surf, info_rect)
 		G.screen.blit(quit_surf, quit_rect)
 
-	def display_start_screen():
-		"""Renders the initial Start Menu."""
-		G.screen.blit(G.plain_bg, (0,0))
-		game_level.custom_draw()
-
-		overlay = pygame.Surface((WIDTH, HEIGHT))
-		overlay.set_alpha(180)
-		overlay.fill(BLACK)
-		G.screen.blit(overlay, (0, 0))
-
-		# volume set button
-		volume_button_img = pygame.image.load("sounds/volume_icon.jpg").convert_alpha()
-		volume_button = Button(WIDTH - 70, 20, volume_button_img, 0.05)
-		volume_button.draw(G.screen)
-		if volume_button.clicked:
-			G.sound_volume = random.randint(0, 100) / 100
-			assets.update_sound_volume(G.sound_volume)
-			print(G.sound_volume)
-
-
-
-		title_surf = title_font.render("Anatolian Adventure", True, RED)
-		title_rect = title_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100))
-
-		# Blinking text effect
-		if pygame.time.get_ticks() % 1000 < 500:
-			start_surf = font.render("Press 'ENTER' to Start", True, WHITE)
-			start_rect = start_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
-			G.screen.blit(start_surf, start_rect)
-
-		controls_surf = font.render("WASD: Move | MOUSE: Shoot | P: Restart", True, (200, 200, 200))
-		controls_rect = controls_surf.get_rect(center=(WIDTH // 2, HEIGHT - 50))
-
-		G.screen.blit(title_surf, title_rect)
-		G.screen.blit(controls_surf, controls_rect)
-
 	# --- Main Loop ---
 	while True:
 		current_time = pygame.time.get_ticks()
@@ -278,11 +223,12 @@ def main():
 
 		# --- State Handling ---
 		if not game_started:
-			display_start_screen()
+			game_started = 1
+			game_active = 1
 
 		elif game_active:
 			# Render Game World (Camera & UI)
-			game_level.custom_draw() # Render level
+			game_level.draw() # Render level
 			ui.update() # Render HUD
 
 			# Update Logic (Only when not paused)

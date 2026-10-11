@@ -36,8 +36,6 @@ health_potion_sound = None
 hurt_sound = None
 death_sound = None
 gun_shot_sound = None
-necromancer_death_sound = None
-nightborne_death_sound = None
 sound_volume = 0.5
 
 # Screen reference (set in main)

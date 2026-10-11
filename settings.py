@@ -48,34 +48,7 @@ def import_folder(path):
 # NOTE: image and sound loading removed from settings. We store paths (strings)
 # so assets.py can load them after pygame.init().
 
-monster_data = {
-    "necromancer": {
-        "health": 100,
-        "attack_damage": 20,
-        "roaming_speed": 2,
-        "hunting_speed": [4, 4, 7, 7, 7],
-        "image_path": "necromancer/roam/0.png",
-        "image_scale": 1.5,
-        "hitbox_rect": ("rect", 0, 0, 75, 100),
-        "animation_speed": 0.2,
-        "roam_animation_speed": 0.05,
-        "death_animation_speed": 0.12,
-        "notice_radius": 500
-    },
-    "nightborne": {
-        "health": 100,
-        "attack_damage": 40,
-        "roaming_speed": 4,
-        "hunting_speed": [4, 4, 6, 6, 6],
-        "image_path": "nightborne/hunt/1.png",
-        "image_scale": 1.9,
-        "hitbox_rect": ("rect", 0, 0, 75, 90),
-        "animation_speed": 0.1,
-        "roam_animation_speed": 0.12,
-        "death_animation_speed": 0.2,
-        "notice_radius": 400
-    },
-}
+monster_data = {}
 
 game_stats = {
     "coins": 0,

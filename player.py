@@ -73,6 +73,8 @@ class Player(pygame.sprite.Sprite):
                 self.velocity_y = -self.velocity_y
         elif self.velocity_y:
             self.velocity_y += 1
+            if(self.velocity_y == 0): self.velocity_y = 1
+            if(self.velocity_y > 30): self.velocity_y = 30
 
         if keys[pygame.K_d]:
             if self.velocity_x<0: self.velocity_x*=-1;
