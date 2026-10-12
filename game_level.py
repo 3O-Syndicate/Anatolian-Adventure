@@ -1,131 +1,63 @@
-"""
-game_level.py
-
-GameLevel class loads the map and builds the map environment with,
-spawns enemies and health potions, and handles drawing the world offset relative to the player.
-
-"""
+"""Load the test map, build platform collisions, and draw the scrolling world."""
 import pygame
 from assets import safe_load_image
-from settings import *
+from item import Item
+from enemy import WalkingEnemy, TurtleEnemy
+from settings import WIDTH, HEIGHT, TILESIZE
 import globals as G
-import random
 
-# Used for map boundaries
+
 class Tile(pygame.sprite.Sprite):
-	def __init__(self, pos, groups, sect):
-		super().__init__(groups)
-		self.rect = pygame.rect.Rect(pos, (32,32))
-		self.image = None
-		if sect: self.image = G.sectboundary_img
+    def __init__(self, pos):
+        super().__init__(G.obstacles_group)
+        self.rect = pygame.Rect(pos, (TILESIZE, TILESIZE))
 
-class GameLevel(pygame.sprite.Group):
-	def __init__(self, level_num):
-		super().__init__()
-		# offset used for camera scrolling
-		self.offset = pygame.math.Vector2()
 
-		# background must have been loaded by assets.py and assigned to G.background
-		self.floor = safe_load_image("levels/" + str(level_num) + ".png")
-		self.enemy_spawn_pos = []
-		self.health_spawn_pos = []
-		self.player_spawn = (0,0)
-		self.sect_boundaries = [[],[],[]]
-		self.next_lvl_triggers = pygame.sprite.Group()
-		self.next_lvl_trigger_active = False
-		self.next_lvl_trigger_invoked = False
-		self.prepare(level_num)
+class GameLevel:
+    def __init__(self, level_num):
+        self.offset = pygame.Vector2()
+        self.floor = safe_load_image(f"levels/{level_num}.png")
+        self.health_spawn_pos = []
+        self.enemy_spawn_pos = []
+        self.turtle_spawn_pos = []
+        self.player_spawn = (0, 0)
+        self.prepare(level_num)
 
-	def prepare(self, level_num):
-		'''
-		Read mask PNG layouts and create Tiles and spawn coordinate lists.
-		'''
-		mask = pygame.image.load("levels/" + str(level_num) +"_mask.png")
-		G.obstacles_group.empty()
-		for row in range(mask.get_height()):
-			for col in range(mask.get_width()):
-				px = mask.get_at((col,row))
-				if(px==(0,0,0)): continue
-				elif(px==(255,255,255)): continue
+    def prepare(self, level_num):
+        """Magenta is solid, green is health, cyan is the player spawn.
 
-				x = col * TILESIZE
-				y = row * TILESIZE
-				if px.r == 255:
-					if px.b == 255: # Boundary
-						# print(x,y)
-						t = Tile((x, y), [G.obstacles_group], px.g)
-						if px.g != 0:
-							self.sect_boundaries[px.g-1].append(t)
-					elif px.g == 255: # Next level trigger
-						Tile((x, y), [self.next_lvl_triggers], px.g)
-					else: # Enemy spawn pos
-						self.enemy_spawn_pos.append(((x, y), px.g))
-				elif px==(0,255,0):
-					self.health_spawn_pos.append((x, y))
-				elif px==(0,255,255):
-					self.player_spawn = (x,y)
+        (255, 1, 0) spawns a walking enemy, (255, 2, 0) a turtle.
+        Exit markers remain inactive.
+        """
+        mask = pygame.image.load(f"levels/{level_num}_mask.png")
+        G.obstacles_group.empty()
+        for row in range(mask.get_height()):
+            for col in range(mask.get_width()):
+                color = tuple(mask.get_at((col, row)))[:3]
+                pos = (col * TILESIZE, row * TILESIZE)
+                if color[0] == 255 and color[2] == 255 and color != (255, 255, 255):
+                    Tile(pos)
+                elif color == (0, 255, 0):
+                    self.health_spawn_pos.append(pos)
+                elif color == (0, 255, 255):
+                    self.player_spawn = pos
+                elif color == (255, 1, 0):
+                    self.enemy_spawn_pos.append(pos)
+                elif color == (255, 2, 0):
+                    self.turtle_spawn_pos.append(pos)
+        for pos in self.health_spawn_pos:
+            Item(pos, "health potion")
+        for pos in self.enemy_spawn_pos:
+            WalkingEnemy(pos)
+        for pos in self.turtle_spawn_pos:
+            TurtleEnemy(pos)
 
-		self.spawn_enemies()
-		self.spawn_health_potions()
+    def update_camera(self):
+        target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)
+        self.offset += (target - self.offset) * 0.05
 
-	def spawn_enemies(self):
-		"""Spawn the configured number of enemies for the current wave."""
-		G.enemy_group.empty()
-		
-
-	def spawn_health_potions(self):
-		"""Spawn a fixed number of health potions at random positions (based on settings)."""
-		for i in self.health_spawn_pos:
-			from item import Item
-			Item(i, "health potion")
-
-	def draw(self):
-		"""
-		Draw the world.
-		Koddo Update: Smooth Camera + Mouse Peek (Fare Takibi) eklendi.
-		"""
-		pygame.draw.rect(G.screen, (0,0,0), (0,0,1280,720))
-
-		# --- KAMERA HEDEF HESAPLAMA ---
-
-		# 1. Oyuncunun Odak Noktası (Ekranın ortasına denk gelecek şekilde)
-		player_target_x = G.player.rect.centerx - (WIDTH // 2)
-		player_target_y = G.player.rect.centery - (HEIGHT // 2)
-
-		# 2. Mouse Pozisyonunu Al
-		mouse_x, mouse_y = pygame.mouse.get_pos()
-
-		# 3. Mouse'un ekranın merkezine olan uzaklığını hesapla
-		offset_mouse_x = mouse_x - (WIDTH // 2)
-		offset_mouse_y = mouse_y - (HEIGHT // 2)
-
-		# 4. "MOUSE_PEEK_FACTOR" (Hassasiyet Ayarı)
-		# Bu sayı 0.0 ile 1.0 arasında olmalı.
-		# 0.3 = Kamera, mouse ile oyuncu arasındaki mesafenin %30'una kadar kayar.
-		# Sayıyı artırırsan kamera mouse'a daha çok yapışır, azaltırsan oyuncuda kalır.
-		peek_factor = 0.3
-
-		final_target_x = player_target_x + (offset_mouse_x * peek_factor)
-		final_target_y = player_target_y + (offset_mouse_y * peek_factor)
-
-		# 5. Lerp (Yumuşak Geçiş) - Kamera bu yeni hedefe yavaşça süzülür
-		self.offset.x += (final_target_x - self.offset.x) * 0.05
-		self.offset.y += (final_target_y - self.offset.y) * 0.05
-
-		# --- KAMERA BİTİŞ ---
-
-		# Çizim işlemleri (Aynı)
-		floor_offset_pos = self.floor.get_rect().topleft - self.offset
-		G.screen.blit(self.floor, floor_offset_pos)
-
-		for sprite in G.all_sprites_group:
-			offset_pos = sprite.rect.topleft - self.offset
-			G.screen.blit(sprite.image, offset_pos)
-
-		# Check if player is triggering a level switch
-		# Normally this should be on player code but its easier to put it here.
-
-		if self.next_lvl_trigger_active:
-			for sprite in self.next_lvl_triggers:
-				if sprite.rect.colliderect(G.player.rect):
-					self.next_lvl_trigger_invoked = True
+    def draw(self):
+        G.screen.fill((0, 0, 0))
+        G.screen.blit(self.floor, -self.offset)
+        for sprite in G.all_sprites_group:
+            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - self.offset)

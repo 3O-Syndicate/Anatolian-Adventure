@@ -23,8 +23,8 @@ class Item(pygame.sprite.Sprite):
         item_info = items.get(type, None)
 
         loaded = False
-        if item_info:
-            path = item_info.get("image_path")
+        if item_info and item_info.get("image_path"):
+            path = item_info["image_path"]
             try:
                 self.image = pygame.image.load(path).convert_alpha()
 

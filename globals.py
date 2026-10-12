@@ -18,11 +18,8 @@ items_group = pygame.sprite.Group()
 player = None        # instance of Player
 ui = None            # instance of UI
 game_level = None    # instance of GameLevel
-level_num = 1
 
 # Loaded assets that assets.py will set
-sectboundary_img = None
-plain_bg = None
 coin_imgs = None
 coin_icon = None
 bullet_img = None
@@ -40,9 +37,3 @@ sound_volume = 0.5
 
 # Screen reference (set in main)
 screen = None
-
-def hitbox_collide(sprite1, sprite2):
-    """
-    Helper used for groupcollide: returns True when enemy hitbox collides with the bullet rect.
-    """
-    return sprite1.base_zombie_rect.colliderect(sprite2.rect)

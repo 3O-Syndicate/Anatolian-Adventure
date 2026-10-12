@@ -1,16 +1,4 @@
-﻿"""
-assets.py
-
-Centralized asset loader. Call load_assets() after pygame.init() and pygame.mixer.init().
-
-Behavior:
- - Loads images and sounds from file paths defined in settings.py
- - Assigns loaded Surfaces/Sounds into the globals module (globals.py) so other modules
-   can access them as G.background, G.coin_imgs, G.bullet_img, etc.
- - Also updates settings.monster_data and settings.items entries to include loaded Surfaces
-   (keeps runtime code in Enemy/Item unchanged).
- - Returns a dict of loaded assets for convenience.
-"""
+"""Load shared player, projectile, pickup, and sound assets after pygame.init()."""
 import os
 import pygame
 import globals as G
@@ -48,10 +36,7 @@ def update_sound_volume(volume):
 		G.death_sound.set_volume(volume)
 	if G.gun_shot_sound:
 		G.gun_shot_sound.set_volume(volume)
-	if G.necromancer_death_sound:
-		G.necromancer_death_sound.set_volume(volume)
-	if G.nightborne_death_sound:
-		G.nightborne_death_sound.set_volume(volume)
+
 def load_assets():
 	"""
 	Loads all project assets and assigns them into globals.py and into settings.* entries
@@ -61,17 +46,6 @@ def load_assets():
 		assets (dict): mapping of asset-name -> loaded object
 	"""
 	assets = {}
-
-	# --- Images & backgrounds ---
-	try:
-		assets['background'] = safe_load_image("levels/1.png", use_alpha=False)
-	except FileNotFoundError:
-		assets['background'] = pygame.Surface((settings.WIDTH, settings.HEIGHT))
-		assets['background'].fill((40, 40, 40))
-		print("Warning: background image not found, using placeholder surface.")
-
-	assets['plain_bg'] = pygame.Surface((settings.WIDTH, settings.HEIGHT))
-	assets['plain_bg'].fill((0, 0, 0))
 
 	# Bullet image
 	try:
@@ -137,36 +111,6 @@ def load_assets():
 		assets['gun_shot_sound'] = None
 		print("Warning: gunshot sound not found.")
 
-	try:
-		assets['necromancer_death_sound'] = safe_load_sound("sounds/necromancer death.wav")
-	except FileNotFoundError:
-		assets['necromancer_death_sound'] = None
-		print("Warning: necromancer death sound not found.")
-
-	try:
-		assets['nightborne_death_sound'] = safe_load_sound("sounds/nightborne death.mp3")
-	except FileNotFoundError:
-		assets['nightborne_death_sound'] = None
-		print("Warning: nightborne death sound not found.")
-
-	# --- Monster images (update settings.monster_data to include loaded Surfaces and Rects) ---
-	for name, info in settings.monster_data.items():
-		img_path = info.get("image_path")
-		if img_path:
-			try:
-				surf = safe_load_image(img_path)
-				settings.monster_data[name]["image"] = surf
-			except FileNotFoundError:
-				# fallback placeholder
-				settings.monster_data[name]["image"] = pygame.Surface((64, 64))
-				settings.monster_data[name]["image"].fill((150, 0, 0))
-				print(f"Warning: monster base image for '{name}' not found: {img_path}")
-		# convert hitbox tuple into pygame.Rect here
-		hb = info.get("hitbox_rect")
-		if isinstance(hb, tuple) and hb and hb[0] == "rect":
-			_, x, y, w, h = hb
-			settings.monster_data[name]["hitbox_rect"] = pygame.Rect(x, y, w, h)
-
 	# --- Items: pre-load item images and (where applicable) animation folders ---
 	for item_name, item_info in settings.items.items():
 		img_path = item_info.get("image_path")
@@ -186,8 +130,6 @@ def load_assets():
 				print(f"Warning: failed to load animation folder for item '{item_name}': {anim_folder}")
 
 	# --- Assign assets into globals for easy access across modules ---
-	G.sectboundary_img = safe_load_image("levels/sectboundary.png")
-	G.plain_bg = assets['plain_bg']
 	G.coin_imgs = assets['coin_imgs']
 	G.bullet_img = assets['bullet_img']
 	G.player_image = assets['player_image']
@@ -199,8 +141,6 @@ def load_assets():
 	G.hurt_sound = assets.get('hurt_sound')
 	G.death_sound = assets.get('death_sound')
 	G.gun_shot_sound = assets.get('gun_shot_sound')
-	G.necromancer_death_sound = assets.get('necromancer_death_sound')
-	G.nightborne_death_sound = assets.get('nightborne_death_sound')
 
 	# return for caller if needed
 	return assets

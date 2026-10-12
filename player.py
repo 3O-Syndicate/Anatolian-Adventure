@@ -7,8 +7,6 @@ Module Description:
 """
 
 import pygame
-import math
-import random
 import globals as G
 from settings import *
 from bullet import Bullet
@@ -17,12 +15,10 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
 
-        # Asset Initialization
-        try:
-            self.base_player_image = pygame.image.load("player/0.png").convert_alpha()
-        except Exception:
-            self.base_player_image = pygame.Surface((64,64))
-            self.base_player_image.fill((100,200,100))
+        self.base_player_image = G.player_image
+        if self.base_player_image is None:
+            self.base_player_image = pygame.Surface((64, 64))
+            self.base_player_image.fill((100, 200, 100))
 
         self.base_player_image = pygame.transform.rotozoom(self.base_player_image, 0, 0.35)
         self.image = self.base_player_image.copy()
@@ -31,11 +27,13 @@ class Player(pygame.sprite.Sprite):
         self.vec_pos = pygame.math.Vector2(pos)
         self.base_player_rect = self.base_player_image.get_rect(center=pos)
         self.rect = self.base_player_rect.copy()
+        self.previous_rect = self.base_player_rect.copy()
 
         # Movement Stats
         self.velocity_x = 0
         self.velocity_y = 0
-        self.is_running = False
+        self.on_ground = False
+        self.jump_was_pressed = False
         self.direction = 0 # 0 = left, 1 = right
 
         # --- WEAPON & AMMO SYSTEM ---
@@ -55,7 +53,7 @@ class Player(pygame.sprite.Sprite):
         self.health = 100
 
     def player_turning(self):
-        """Rotates the player sprite to face the mouse cursor."""
+        """Faces the sprite in the horizontal movement direction."""
         if self.direction == 0:
             self.image = pygame.transform.flip(self.base_player_image, True, False)
         else:
@@ -66,26 +64,23 @@ class Player(pygame.sprite.Sprite):
         # Processes keyboard and mouse events for movement and actions.
         keys = pygame.key.get_pressed()
 
-        if keys[pygame.K_w]: 
-            if(self.velocity_y == 0): self.velocity_y = -30
-        elif keys[pygame.K_s]:
-            if(self.velocity_y < 0):
-                self.velocity_y = -self.velocity_y
-        elif self.velocity_y:
-            self.velocity_y += 1
-            if(self.velocity_y == 0): self.velocity_y = 1
-            if(self.velocity_y > 30): self.velocity_y = 30
+        jump_pressed = keys[pygame.K_w]
+        if jump_pressed and not self.jump_was_pressed and self.on_ground:
+            self.velocity_y = -30
+            self.on_ground = False
+        self.jump_was_pressed = jump_pressed
+
+        if keys[pygame.K_s] and self.velocity_y < 0:
+            self.velocity_y = -self.velocity_y
 
         if keys[pygame.K_d]:
             if self.velocity_x<0: self.velocity_x*=-1;
             elif self.velocity_x<10: self.velocity_x += 1
             self.direction = 1
-            if(self.velocity_y == 0): self.velocity_y = 1
         elif keys[pygame.K_a]:
             if self.velocity_x>0: self.velocity_x*=-1;
             elif self.velocity_x>-10: self.velocity_x -= 1
             self.direction = 0
-            if(self.velocity_y == 0): self.velocity_y = 1
         elif self.velocity_x:
             if self.velocity_x>0: self.velocity_x -= 1
             else: self.velocity_x += 1
@@ -94,26 +89,9 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_r] and self.current_ammo < self.max_ammo and self.total_ammo > 0 and not self.is_reloading:
             self.start_reload()
 
-        # DEBUG: Kill all enemies
-        if keys[pygame.K_x]:
-            for x in G.enemy_group:
-                if x.alive:
-                    x.alive = False
-                    game_stats['enemies_killed_or_removed']+=1
-            G.enemy_group.empty()
-
-        # DEBUG: refresh screen
-        if keys[pygame.K_c]:
-            for i in range(1,144,4):
-                for j in range(5):
-                    rect = pygame.rect.Rect(0, 0, 1280, i)
-                    G.screen.blit(G.plain_bg, (0,j*144), rect)
-                    pygame.display.update()
-
         # Shooting Action
         if (pygame.mouse.get_pressed() == (1, 0, 0) or keys[pygame.K_SPACE]) and not self.is_reloading and self.current_ammo > 0:
             self.is_shooting = True
-            self.shoot()
         else:
             self.is_shooting = False
 
@@ -143,24 +121,22 @@ class Player(pygame.sprite.Sprite):
 
     def move(self):
         """Applies velocity and resolves collisions."""
+        self.previous_rect = self.base_player_rect.copy()
 
-        # # Normalize diagonal vector
-        # if self.velocity_x != 0 and self.velocity_y != 0:
-        #     self.velocity_x /= math.sqrt(2)
-        #     self.velocity_y /= math.sqrt(2)
+        # Gravity runs every frame, including while jump/down is held.
+        self.velocity_y = min(self.velocity_y + 1, 30)
+        self.on_ground = False
 
         self.base_player_rect.centerx += self.velocity_x
         self.check_collision(True)
         self.base_player_rect.centery += self.velocity_y
         self.check_collision(False)
 
-        # Revert multiplications caused by tactical movements.
-
         self.rect.center = self.base_player_rect.center
-        self.vec_pos = (self.base_player_rect.centerx, self.base_player_rect.centery)
+        self.vec_pos.update(self.base_player_rect.center)
 
     def shoot(self):
-        """Spawns a bullet with random spread."""
+        """Fires horizontally in the facing direction."""
         if self.shoot_cooldown == 0 and self.is_shooting:
             if G.gun_shot_sound:
                 G.gun_shot_sound.play()
@@ -169,10 +145,7 @@ class Player(pygame.sprite.Sprite):
             if(self.direction == 0): final_angle = 180
 
             spawn_bullet_pos = self.vec_pos + self.gun_barrel_offset.rotate(final_angle)
-            bullet = Bullet(spawn_bullet_pos[0], spawn_bullet_pos[1], final_angle)
-
-            G.bullet_group.add(bullet)
-            G.all_sprites_group.add(bullet)
+            Bullet(spawn_bullet_pos[0], spawn_bullet_pos[1], final_angle)
 
             self.current_ammo -= 1
             self.shoot_cooldown = 10
@@ -207,10 +180,46 @@ class Player(pygame.sprite.Sprite):
                 else:
                     if self.velocity_y < 0: 
                         self.base_player_rect.top = sprite.rect.bottom
-                        self.velocity_y = 1
+                        self.velocity_y = 0
                     elif self.velocity_y > 0: 
                         self.base_player_rect.bottom = sprite.rect.top
                         self.velocity_y = 0
+                        self.on_ground = True
+
+    def check_enemy_collisions(self):
+        """Resolve contacts after both the player and enemies have moved.
+
+        Crossing an enemy's top while descending is a stomp. Using the
+        previous positions also catches fast falls through a small enemy.
+        """
+        if self.health <= 0:
+            return
+        for enemy in list(G.enemy_group):
+            enemy.update_player_grace(self)
+            old_gap = enemy.previous_rect.top - self.previous_rect.bottom
+            new_gap = enemy.rect.top - self.base_player_rect.bottom
+            stomp = False
+            if self.velocity_y > 0 and old_gap >= 0 and new_gap <= 0 and old_gap > new_gap:
+                contact_time = old_gap / (old_gap - new_gap)
+                player_left = self.previous_rect.left + (
+                    self.base_player_rect.left - self.previous_rect.left
+                ) * contact_time
+                enemy_left = enemy.previous_rect.left + (
+                    enemy.rect.left - enemy.previous_rect.left
+                ) * contact_time
+                stomp = (player_left < enemy_left + enemy.rect.width
+                         and player_left + self.base_player_rect.width > enemy_left)
+            if stomp:
+                contact_top = enemy.rect.top
+                enemy.on_stomp(self)
+                self.base_player_rect.bottom = contact_top
+                self.rect.center = self.base_player_rect.center
+                self.vec_pos.update(self.base_player_rect.center)
+                self.velocity_y = -15
+                self.on_ground = False
+            elif self.base_player_rect.colliderect(enemy.rect) and enemy.on_player_contact(self):
+                self.get_damage(self.health)
+                break
 
     def update(self):
         self.player_turning()
@@ -218,4 +227,4 @@ class Player(pygame.sprite.Sprite):
         self.player_input()
         self.move()
         if self.shoot_cooldown > 0: self.shoot_cooldown -= 1
-        if self.shoot: self.shoot()
+        self.shoot()

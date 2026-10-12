@@ -4,7 +4,7 @@ settings.py
 Pure data + helper functions only. No image or sound loading here.
 Store file paths (strings) for assets so assets.py can load them after pygame.init().
 
-Constants: screen size, tile size, colours, and game data (monster/item metadata).
+Constants: screen size, tile size, colours, and game data (item metadata).
 """
 import os
 
@@ -48,8 +48,6 @@ def import_folder(path):
 # NOTE: image and sound loading removed from settings. We store paths (strings)
 # so assets.py can load them after pygame.init().
 
-monster_data = {}
-
 game_stats = {
     "coins": 0,
     "health_potion_heal": 20,
@@ -61,5 +59,5 @@ items = {
     "health potion": {"image_path": "items/health.png", "has_animation": False},
     "coin": {"image_path": "items/coin/0.png", "has_animation": True, "anim_folder": "items/coin"},
 
-    "ammo": {"image_path": "items/ammo.png", "has_animation": False}
+    "ammo": {"has_animation": False}
 }
