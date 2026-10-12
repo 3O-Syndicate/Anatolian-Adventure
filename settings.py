@@ -13,6 +13,15 @@ WIDTH = 1280    # 1280 x 720 - full is 1600x900
 HEIGHT = 720
 FPS = 60
 TILESIZE = 32
+MAP_BACKGROUND = (110, 175, 230)
+
+# Optional repeating textures. Missing files use flat colored placeholders.
+# Other IDs default to tiles/<ID>.png; 0 is always invisible.
+TERRAIN_TEXTURES = {
+    1: "tiles/ground.png",
+    2: "tiles/underground.png",
+    3: "tiles/brick.png",
+}
 
 # colours
 RED = (255, 0, 0)
