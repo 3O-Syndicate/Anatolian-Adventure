@@ -34,6 +34,8 @@ class Player(pygame.sprite.Sprite):
         self.velocity_y = 0
         self.on_ground = False
         self.jump_was_pressed = False
+        self.down_was_pressed = False
+        self.tunnel_requested = False
         self.direction = 0 # 0 = left, 1 = right
 
         # --- WEAPON & AMMO SYSTEM ---
@@ -63,10 +65,13 @@ class Player(pygame.sprite.Sprite):
     def player_input(self):
         # Processes keyboard and mouse events for movement and actions.
         keys = pygame.key.get_pressed()
+        down_pressed = keys[pygame.K_s]
+        self.tunnel_requested = down_pressed and not self.down_was_pressed and self.on_ground
+        self.down_was_pressed = down_pressed
 
         jump_pressed = keys[pygame.K_w]
         if jump_pressed and not self.jump_was_pressed and self.on_ground:
-            self.velocity_y = -30
+            self.velocity_y = -20
             self.on_ground = False
         self.jump_was_pressed = jump_pressed
 
@@ -124,7 +129,7 @@ class Player(pygame.sprite.Sprite):
         self.previous_rect = self.base_player_rect.copy()
 
         # Gravity runs every frame, including while jump/down is held.
-        self.velocity_y = min(self.velocity_y + 1, 30)
+        self.velocity_y = min(self.velocity_y + 1, 20)
         self.on_ground = False
 
         self.base_player_rect.centerx += self.velocity_x
@@ -226,5 +231,7 @@ class Player(pygame.sprite.Sprite):
         self.check_reload()
         self.player_input()
         self.move()
+        if self.tunnel_requested and G.game_level is not None:
+            G.game_level.try_enter_tunnel(self)
         if self.shoot_cooldown > 0: self.shoot_cooldown -= 1
         self.shoot()
