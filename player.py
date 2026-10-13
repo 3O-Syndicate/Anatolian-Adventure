@@ -51,6 +51,8 @@ class Player(pygame.sprite.Sprite):
         self.reload_duration = 1500
 
         self.health = 100
+        self.is_caged = False
+        self.cage = None
 
     def player_turning(self):
         """Faces the sprite in the horizontal movement direction."""
@@ -63,6 +65,18 @@ class Player(pygame.sprite.Sprite):
     def player_input(self):
         # Processes keyboard and mouse events for movement and actions.
         keys = pygame.key.get_pressed()
+
+        if self.is_caged:
+            if keys[pygame.K_d]:
+                self.direction = 1
+            elif keys[pygame.K_a]:
+                self.direction = 0
+            self.velocity_x = 0
+            self.is_shooting = False
+            if keys[pygame.K_e] or keys[pygame.K_SPACE]:
+                if self.cage and not self.cage.is_broken:
+                    self.cage.break_open()
+            return
 
         jump_pressed = keys[pygame.K_w]
         if jump_pressed and not self.jump_was_pressed and self.on_ground:
@@ -127,7 +141,7 @@ class Player(pygame.sprite.Sprite):
         self.velocity_y = min(self.velocity_y + 1, 30)
         self.on_ground = False
 
-        self.base_player_rect.centerx += self.velocity_x
+        self.base_player_rect.centerx += self.velocity_x 
         self.check_collision(True)
         self.base_player_rect.centery += self.velocity_y
         self.check_collision(False)
@@ -141,17 +155,19 @@ class Player(pygame.sprite.Sprite):
             if G.gun_shot_sound:
                 G.gun_shot_sound.play()
 
-            final_angle = 0
-            if(self.direction == 0): final_angle = 180
+            final_angle = 0 if self.direction == 1 else 180
+            barrel_x = self.vec_pos.x + (30 if self.direction == 1 else -30)
+            barrel_y = self.vec_pos.y - 14
 
-            spawn_bullet_pos = self.vec_pos + self.gun_barrel_offset.rotate(final_angle)
-            Bullet(spawn_bullet_pos[0], spawn_bullet_pos[1], final_angle)
+            Bullet(barrel_x, barrel_y, final_angle)
 
             self.current_ammo -= 1
             self.shoot_cooldown = 10
 
     def get_damage(self, amount):
         """Handles damage calculation and death sounds."""
+        if self.is_caged:
+            return
         if G.ui.current_health > 0:
             G.ui.current_health -= amount
             self.health -= amount
@@ -173,6 +189,8 @@ class Player(pygame.sprite.Sprite):
 
     def check_collision(self, horizontal):
         for sprite in G.obstacles_group:
+            if sprite is getattr(self, "cage", None):
+                continue
             if sprite.rect.colliderect(self.base_player_rect):
                 if horizontal:
                     if self.velocity_x > 0: self.base_player_rect.right = sprite.rect.left
@@ -192,7 +210,7 @@ class Player(pygame.sprite.Sprite):
         Crossing an enemy's top while descending is a stomp. Using the
         previous positions also catches fast falls through a small enemy.
         """
-        if self.health <= 0:
+        if self.is_caged or self.health <= 0:
             return
         for enemy in list(G.enemy_group):
             enemy.update_player_grace(self)

@@ -17,6 +17,9 @@ class Tile(pygame.sprite.Sprite):
 class GameLevel:
     def __init__(self, level_num):
         self.offset = pygame.Vector2()
+        self.shake_timer = 0
+        self.shake_amount = 0
+        self.shake_offset = pygame.Vector2()
         self.health_spawn_pos = []
         self.enemy_spawn_pos = []
         self.turtle_spawn_pos = []
@@ -65,9 +68,19 @@ class GameLevel:
     def update_camera(self):
         target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)
         self.offset += (target - self.offset) * 0.05
+        if self.shake_timer > 0:
+            import random
+            self.shake_timer -= 1
+            self.shake_offset = pygame.Vector2(
+                random.uniform(-self.shake_amount, self.shake_amount),
+                random.uniform(-self.shake_amount, self.shake_amount),
+            )
+        else:
+            self.shake_offset = pygame.Vector2()
 
     def draw(self):
+        draw_offset = self.offset + self.shake_offset
         G.screen.fill(MAP_BACKGROUND)
-        G.screen.blit(self.floor, -self.offset)
+        G.screen.blit(self.floor, -draw_offset)
         for sprite in G.all_sprites_group:
-            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - self.offset)
+            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
