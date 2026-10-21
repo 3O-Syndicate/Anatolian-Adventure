@@ -17,11 +17,20 @@ Keys
   L               decor layer: back (behind terrain) / front (over the player)
   G               grid on/off
   arrows          move the view
-  Ctrl+S          save
+  Alt+click / I   pick what is under the cursor
+  F               turn the enemy under the cursor around
+  + / -           change the pair number of the tunnel under the cursor
+  Ctrl+Z / Ctrl+Y undo / redo
+  Ctrl+arrows     resize: columns at the right edge, rows at the top
+  PgUp / PgDn     previous / next level (a missing number starts a new level)
+  F5              save and play this level (python main.py --level <n>)
+  Ctrl+S          save; problems such as unpaired tunnels are listed
   Esc             quit (press twice to drop unsaved changes)
 """
+import copy
 import math
 import os
+import subprocess
 import sys
 
 import pygame
@@ -123,26 +132,33 @@ class Editor:
         self.font = pygame.font.Font("font/PublicPixel.ttf", 8)
         self.font_big = pygame.font.Font("font/PublicPixel.ttf", 12)
         self.art = Art()
-        self.level_num = level_num
-        self.path = os.path.join("levels", f"{level_num}.json")
         self.message = ""
-        self.level = self.open_level()
         self.tab = "terrain"
         self.selected = {"terrain": 1, "decor": next(iter(self.art.decor), None), "entity": "walker"}
         self.decor_layer = "back"
         self.tool = "brush"
         self.zoom = 1
         self.show_grid = True
-        self.dirty = False
         self.running = True
         self.quit_armed = False
         self.pan_from = None       # mouse position while panning
         self.stroke = None         # "paint" / "erase" while a mouse button is held
+        self.stroke_before = None  # level copy from the start of a stroke, for undo
         self.rect_start = None     # first cell of a rectangle drag
         self.last_cell = None
         self.hits = []             # (screen rect, action) for panel buttons, rebuilt each draw
+        self.load(level_num)
+
+    def load(self, level_num):
+        """Open (or start) a level and reset the history and view."""
+        self.level_num = level_num
+        self.path = os.path.join("levels", f"{level_num}.json")
+        self.level = self.open_level()
+        self.dirty = False
+        self.undo_stack, self.redo_stack = [], []
         world_h = self.level["height"] * TILESIZE
         self.offset = pygame.Vector2(0, max(0, world_h - SCREEN_H))  # start at the bottom-left
+        pygame.display.set_caption(f"Anatolian Adventure - Harita Editörü (bölüm {level_num})")
 
     # --- level file ---------------------------------------------------------
 
@@ -161,6 +177,56 @@ class Editor:
         level_format.save_level(self.level, self.path)
         self.dirty = False
         self.message = f"Kaydedildi: {self.path}"
+        issues = level_format.problems(self.level)
+        if issues:
+            self.message += ". Uyarı: " + "; ".join(issues)
+
+    def playtest(self):
+        """Save, then run the game on this level in its own window."""
+        self.save()
+        unpaired = [pair for pair, spots in level_format.tunnel_pairs(self.level).items()
+                    if len(spots) != 2]
+        if unpaired:
+            self.message = f"Oyun açılmadı: eşi olmayan tünel {unpaired}"
+            return
+        subprocess.Popen([sys.executable, "main.py", "--level", str(self.level_num)])
+        self.message += " | Oyun başlatıldı"
+
+    def switch_level(self, delta):
+        if self.dirty:
+            self.message = "Önce kaydet (Ctrl+S)"
+            return
+        self.load(max(0, self.level_num + delta))
+
+    # --- history ------------------------------------------------------------
+
+    def remember(self, before):
+        """Record the level as it was before an edit, if the edit changed anything."""
+        if before != self.level:
+            self.undo_stack.append(before)
+            del self.undo_stack[:-100]
+            self.redo_stack.clear()
+            self.dirty = True
+
+    def change(self, action):
+        """Run a one-shot edit as a single undo step."""
+        before = copy.deepcopy(self.level)
+        action()
+        self.remember(before)
+
+    def undo(self):
+        if self.undo_stack:
+            self.redo_stack.append(self.level)
+            self.level = self.undo_stack.pop()
+            self.dirty = True
+            self.message = "Geri alındı"
+
+    def redo(self):
+        if self.redo_stack:
+            self.undo_stack.append(self.level)
+            self.level = self.redo_stack.pop()
+            self.dirty = True
+            self.message = "Yinelendi"
 
     # --- coordinates --------------------------------------------------------
 
@@ -248,14 +314,73 @@ class Editor:
         lonely = sorted(pair for pair, spots in pairs.items() if len(spots) == 1)
         return lonely[0] if lonely else max(pairs, default=0) + 1
 
-    def erase_entity(self, col, row):
+    def entity_under(self, cell):
+        """Topmost object in this tile or drawn over it."""
+        col, row = cell
         point = ((col + 0.5) * TILESIZE, (row + 0.5) * TILESIZE)
         for entity in reversed(self.level["entities"]):
             if (entity["x"], entity["y"]) == (col, row) or \
                     self.art.entity_rect(entity).collidepoint(point):
-                self.level["entities"].remove(entity)
-                self.dirty = True
-                return
+                return entity
+        return None
+
+    def erase_entity(self, col, row):
+        entity = self.entity_under((col, row))
+        if entity is not None:
+            self.level["entities"].remove(entity)
+            self.dirty = True
+
+    def pick(self, cell):
+        """Select whatever is under the cursor on the current tab."""
+        if cell is None:
+            return
+        col, row = cell
+        if self.tab == "terrain":
+            tile_id = level_format.char_tile(self.level["terrain"][row][col])
+            if tile_id is not None:
+                self.selected["terrain"] = tile_id
+        elif self.tab == "decor":
+            point = ((col + 0.5) * TILESIZE, (row + 0.5) * TILESIZE)
+            for item in reversed(self.level["decor"]):
+                if self.art.decor_rect(item).collidepoint(point):
+                    self.selected["decor"] = item["id"]
+                    self.decor_layer = item.get("layer", "back")
+                    return
+        else:
+            entity = self.entity_under(cell)
+            if entity is not None:
+                self.selected["entity"] = entity["type"]
+
+    def flip_enemy(self, cell):
+        entity = self.entity_under(cell) if cell else None
+        if entity is not None and "dir" in entity:
+            self.change(lambda: entity.__setitem__("dir", -entity["dir"]))
+
+    def change_pair(self, cell, delta):
+        entity = self.entity_under(cell) if cell else None
+        if entity is not None and entity["type"] == "tunnel":
+            self.change(lambda: entity.__setitem__("pair", max(1, entity["pair"] + delta)))
+            self.message = f"Tünel eşi: {entity['pair']}"
+
+    def resize(self, d_width, d_height):
+        """Columns come and go at the right edge, rows at the top, so the ground stays put."""
+        level = self.level
+        width, height = level["width"] + d_width, level["height"] + d_height
+        if not (20 <= width <= 1000 and 15 <= height <= 200):
+            return
+        terrain = [row[:width].ljust(width, level_format.EMPTY) for row in level["terrain"]]
+        if d_height > 0:
+            terrain = [level_format.EMPTY * width] * d_height + terrain
+        else:
+            terrain = terrain[-d_height:]
+        for item in level["entities"] + level["decor"]:
+            item["y"] += d_height
+        level["entities"] = [e for e in level["entities"]
+                             if 0 <= e["x"] < width and 0 <= e["y"] < height]
+        level["decor"] = [d for d in level["decor"] if 0 <= d["x"] < width and 0 <= d["y"] < height]
+        level["terrain"], level["width"], level["height"] = terrain, width, height
+        self.offset.y += d_height * TILESIZE
+        self.message = f"Boyut: {width}x{height}"
 
     def apply(self, cell, first):
         """Paint or erase at a cell during a stroke; `first` is the button-down cell."""
@@ -303,10 +428,36 @@ class Editor:
         ctrl = event.mod & pygame.KMOD_CTRL
         if event.key != pygame.K_ESCAPE:
             self.quit_armed = False
+        cell = self.to_cell(pygame.mouse.get_pos())
+        resize = {pygame.K_RIGHT: (1, 0), pygame.K_LEFT: (-1, 0),
+                  pygame.K_UP: (0, 1), pygame.K_DOWN: (0, -1)}
         if event.key == pygame.K_ESCAPE:
             self.request_quit()
         elif ctrl and event.key == pygame.K_s:
             self.save()
+        elif ctrl and event.key == pygame.K_z:
+            if event.mod & pygame.KMOD_SHIFT:
+                self.redo()
+            else:
+                self.undo()
+        elif ctrl and event.key == pygame.K_y:
+            self.redo()
+        elif ctrl and event.key in resize:
+            self.change(lambda: self.resize(*resize[event.key]))
+        elif event.key == pygame.K_F5:
+            self.playtest()
+        elif event.key == pygame.K_PAGEUP:
+            self.switch_level(-1)
+        elif event.key == pygame.K_PAGEDOWN:
+            self.switch_level(1)
+        elif event.key == pygame.K_i:
+            self.pick(cell)
+        elif event.key == pygame.K_f:
+            self.flip_enemy(cell)
+        elif event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
+            self.change_pair(cell, 1)
+        elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
+            self.change_pair(cell, -1)
         elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
             self.tab = TABS[event.key - pygame.K_1][0]
         elif event.key == pygame.K_b:
@@ -332,8 +483,12 @@ class Editor:
             return
         if event.button not in (1, 3):
             return
-        self.stroke = "paint" if event.button == 1 else "erase"
         cell = self.to_cell(event.pos)
+        if event.button == 1 and pygame.key.get_mods() & pygame.KMOD_ALT:
+            self.pick(cell)
+            return
+        self.stroke = "paint" if event.button == 1 else "erase"
+        self.stroke_before = copy.deepcopy(self.level)
         if self.tool == "rect" and self.tab == "terrain":
             self.rect_start = cell
         elif cell is not None:
@@ -349,6 +504,9 @@ class Editor:
             if end is not None:
                 tile = self.selected["terrain"] if self.stroke == "paint" else None
                 self.fill_rect(self.rect_start, end, tile)
+        if self.stroke_before is not None:
+            self.remember(self.stroke_before)
+            self.stroke_before = None
         self.rect_start = None
         self.stroke = None
         self.last_cell = None
@@ -367,6 +525,8 @@ class Editor:
 
     def update(self):
         keys = pygame.key.get_pressed()
+        if pygame.key.get_mods() & pygame.KMOD_CTRL:
+            return  # Ctrl+arrows resize instead
         speed = 12 / self.zoom
         self.offset.x += (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * speed
         self.offset.y += (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * speed
@@ -561,13 +721,16 @@ class Editor:
         cell_pos = self.to_cell(pygame.mouse.get_pos())
         where = f"{cell_pos[0]}, {cell_pos[1]}" if cell_pos else "-"
         self.text(f"Hücre: {where}   Zoom: {self.zoom}x", (x, y), UI_DIM)
-        for i, line in enumerate(self.wrap(self.message, 30)[:3]):
+        for i, line in enumerate(self.wrap(self.message, 30)[:4]):
             self.text(line, (x, y + 16 + i * 12), UI_TEXT)
 
         help_lines = ["Sol: boya   Sağ: sil", "Orta/Space: kaydır",
-                      "Teker: zoom  G: ızgara", "Ctrl+S: kaydet  Esc: çık"]
+                      "Teker: zoom  G: ızgara", "Alt+tık / I: seç",
+                      "F: yön  +/-: tünel eşi", "Ctrl+Z/Y: geri al/yinele",
+                      "Ctrl+oklar: boyut", "F5: oyna  PgUp/Dn: bölüm",
+                      "Ctrl+S: kaydet  Esc: çık"]
         for i, line in enumerate(help_lines):
-            self.text(line, (x, SCREEN_H - 60 + i * 12), UI_DIM)
+            self.text(line, (x, SCREEN_H - 114 + i * 12), UI_DIM)
 
     @staticmethod
     def wrap(message, width):
@@ -586,7 +749,6 @@ def main():
     level_num = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
-    pygame.display.set_caption(f"Anatolian Adventure - Harita Editörü (bölüm {level_num})")
     editor = Editor(level_num, screen)
     clock = pygame.time.Clock()
     while editor.running:
