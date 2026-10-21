@@ -40,6 +40,7 @@ def update_sound_volume(volume):
 
 HERO_ANIMATIONS = ("idle", "run", "jump", "fall", "land", "duck", "shoot",
                    "duck_shoot", "reload", "hurt", "death")
+ENEMY_ANIMATIONS = ("walker/walk", "turtle/walk", "turtle/shell", "turtle/spin")
 
 def placeholder_hero_animations():
 	"""Single green frame for every hero animation, used when frames are missing."""
@@ -114,6 +115,19 @@ def load_assets():
 		assets['muzzle_flash_imgs'] = []
 		print("Warning: muzzle flash frames not found.")
 
+	# enemy animations (enemies/<name>/<n>.png); missing ones keep flat colours
+	assets['enemy_frames'] = {}
+	for name in ENEMY_ANIMATIONS:
+		try:
+			frames = import_folder(os.path.join("enemies", name))
+		except Exception:
+			frames = []
+		if frames:
+			flipped = [pygame.transform.flip(frame, True, False) for frame in frames]
+			assets['enemy_frames'][name] = (frames, flipped)
+		else:
+			print(f"Warning: enemy frames not found: enemies/{name}")
+
 	# coin icon for UI (take first coin frame if available)
 	if assets['coin_imgs']:
 		try:
@@ -180,6 +194,7 @@ def load_assets():
 	G.hero_meta = assets['hero_meta']
 	G.hero_anims = assets['hero_anims']
 	G.muzzle_flash_imgs = assets['muzzle_flash_imgs']
+	G.enemy_frames = assets['enemy_frames']
 	G.coin_icon = assets['coin_icon']
 
 	# sounds
