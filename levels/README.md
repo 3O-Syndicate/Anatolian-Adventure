@@ -1,39 +1,135 @@
-# Map masks
+# Levels
 
-> Levels are now `<level>.json` files (format in `level_format.py`). When
-> `<level>.json` exists it is loaded and the mask below is ignored. Convert a
-> mask with `python level_format.py import levels/0_mask.png levels/0.json`.
+Each level is `levels/<n>.json`. Edit them with the map editor:
 
-Only `<level>_mask.png` is needed. Each pixel becomes a 32×32 world tile.
-The full-size `<level>.png` artwork is no longer loaded.
+```
+python editor.py 1
+```
 
-Colors are RGBA (`0xRRGGBBAA`). Alpha is reserved and currently ignored.
+`levels/0.json` is the old test map converted from `0_mask.png`.
+`levels/1.json` is a sample level that shows every feature (decor on both
+layers, coins, a tunnel pair, enemies facing both ways, checkpoint, goal);
+rework or replace it freely. Play a level directly with
+`python main.py --level 1`, or press F5 in the editor.
 
-| Mask color | Meaning |
+## Map editor
+
+The editor draws the level with the game's own tiles, decor and sprites.
+The right panel has three tabs: **Zemin** (terrain), **Dekor** (decor) and
+**Nesne** (objects).
+
+| Input | Action |
 | --- | --- |
-| `(255, 0, 255, A)` / `0xFF00FFAA` | Invisible solid collision |
-| `(255, 1, 255, A)` | Ground, solid |
-| `(255, 2, 255, A)` | Underground, solid |
-| `(255, 3, 255, A)` | Brick, solid |
-| `(255, 4..254, 255, A)` | Additional solid tile types |
+| Left drag | Paint the selected tile / decor / object |
+| Right drag | Erase on the current tab |
+| Middle drag, or Space + left drag | Move the view |
+| Wheel | Zoom (0.5x, 1x, 2x) |
+| `1` `2` `3` | Terrain / decor / object tab |
+| `B` / `R` | Brush / rectangle (rectangle fills terrain) |
+| `L` | Decor layer: back (behind terrain) or front (over the player) |
+| `G` | Grid on/off |
+| Alt + click, or `I` | Pick what is under the cursor |
+| `F` | Turn the enemy under the cursor around |
+| `+` / `-` | Change the pair number of the tunnel under the cursor |
+| `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
+| `Ctrl` + arrows | Resize: columns at the right edge, rows at the top |
+| `PgUp` / `PgDn` | Previous / next level; a new number starts an empty level |
+| `F5` | Save and play this level |
+| `Ctrl+S` | Save; problems are listed in the panel |
+| `Esc` | Quit (press twice to drop unsaved changes) |
+
+Placement rules: one object per tile; the player and the goal move instead
+of duplicating; a new tunnel mouth joins a mouth that has no partner yet,
+otherwise it starts a new pair. Wide decor goes down one per click, 1-tile
+decor (fence, grass, ...) and coins can be dragged.
+
+Saving warns about a missing player or goal, tunnel pairs without exactly
+two mouths, and anything outside the map. F5 refuses to start the game while
+a tunnel has no partner, because the game rejects such levels.
+
+## File format
+
+The format lives in `level_format.py`, shared by the game and the editor.
+Files keep one terrain row, decor or object per line so git diffs stay
+readable.
+
+```json
+{
+  "version": 1,
+  "width": 120,
+  "height": 20,
+  "background": [110, 175, 230],
+  "terrain": [
+    "......",
+    "111111",
+    "222222"
+  ],
+  "decor": [
+    {"id": "tree", "x": 8, "y": 16, "layer": "back"}
+  ],
+  "entities": [
+    {"type": "player", "x": 3, "y": 16},
+    {"type": "walker", "x": 25, "y": 16, "dir": -1},
+    {"type": "tunnel", "x": 20, "y": 16, "pair": 1}
+  ]
+}
+```
+
+Coordinates are tile columns (`x`) and rows (`y`), counted from the top left.
+
+**Terrain** is one character per tile:
+
+| Character | Tile |
+| --- | --- |
+| `.` | Empty |
+| `#` | Invisible solid (terrain ID 0) |
+| `1` | Ground (`tiles/ground.png`) |
+| `2` | Underground (`tiles/underground.png`) |
+| `3` | Brick (`tiles/brick.png`) |
+| `4`-`9`, `A`-`Z` | Terrain IDs 4-35, texture `tiles/<ID>.png` |
+
+Textures are configured in `TERRAIN_TEXTURES` in `settings.py`; other IDs
+look for `tiles/<ID>.png`, and missing textures use flat coloured
+placeholders. All terrain is solid.
+
+**Decor** never collides. `id` is a file in `decor/` (without `.png`).
+`x, y` is the tile the image's bottom-left corner stands in. Layer `back`
+is drawn behind the terrain, `front` in front of the player.
+
+**Entities** take one tile each:
+
+| Type | Meaning | Extra keys |
+| --- | --- | --- |
+| `player` | Start position; the player's feet stand in this tile | |
+| `walker` | Walking enemy (goose art) | `dir`: -1 starts left, 1 right |
+| `turtle` | Shell enemy (tortoise art) | `dir` |
+| `health` | Health pickup | |
+| `coin` | Coin | |
+| `tunnel` | Tunnel mouth, in an empty tile right above a floor | `pair`: mouths with the same pair connect |
+| `checkpoint` | Checkpoint flag (artwork only for now) | |
+| `goal` | Goal flag (artwork only for now) | |
+
+## Old colour masks
+
+Before the JSON files, levels were `<level>_mask.png` images where each
+pixel is one 32x32 tile. When `<level>.json` exists the mask is ignored;
+without a JSON file the mask still loads. Convert one for good with:
+
+```
+python level_format.py import levels/0_mask.png levels/0.json
+```
+
+| Mask colour | Meaning |
+| --- | --- |
+| `(255, 0, 255)` | Invisible solid collision |
+| `(255, 1..35, 255)` | Terrain ID 1-35 (1 ground, 2 underground, 3 brick) |
 | White or black | Empty space |
-| `(0, 255, 255, A)` | Player spawn |
-| `(0, 255, 0, A)` | Health pickup |
-| `(255, 1, 0, A)` | Walking enemy |
-| `(255, 2, 0, A)` | Turtle |
+| `(0, 255, 255)` | Player spawn |
+| `(0, 255, 0)` | Health pickup |
+| `(255, 1, 0)` | Walking enemy |
+| `(255, 2, 0)` | Turtle |
+| `(255, 255, 1..254)` | Tunnel mouth; blue is the pair number |
 
-Green 255 is reserved for white empty pixels, so terrain IDs range from 0 to 254.
-Other colors have no behavior, including the existing yellow exit markers.
-
-Optional textures are configured in `TERRAIN_TEXTURES` in `settings.py`.
-Editable placeholders are provided in `tiles/ground.png`, `tiles/underground.png`,
-and `tiles/brick.png`. Replace them with artwork and restart to reload textures.
-Other IDs look for `tiles/<ID>.png`. Images are scaled to the tile size with
-nearest-neighbor sampling. Missing textures use flat colored placeholders.
-Type 0 never draws a texture. Terrain is rendered once into a transparent
-surface when the level loads, then blitted over the background while scrolling.
-
-The existing test map's magenta pixels are all type 0 and remain invisible.
-Recolor chosen pixels to types 1 and above to make them visible. Save masks as
-RGBA PNGs: indexed palettes may round small green-channel values to an existing
-color and change the tile or spawn type.
+Masks can hold terrain IDs up to 254, but the JSON format has characters
+for IDs 0-35 only; the importer stops on higher IDs. Save masks as RGBA
+PNGs: indexed palettes may round small channel values and change a type.
