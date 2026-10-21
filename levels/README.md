@@ -1,5 +1,9 @@
 # Map masks
 
+> Levels are now `<level>.json` files (format in `level_format.py`). When
+> `<level>.json` exists it is loaded and the mask below is ignored. Convert a
+> mask with `python level_format.py import levels/0_mask.png levels/0.json`.
+
 Only `<level>_mask.png` is needed. Each pixel becomes a 32×32 world tile.
 The full-size `<level>.png` artwork is no longer loaded.
 
