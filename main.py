@@ -88,11 +88,14 @@ def main():
 
         if game_active:
             if not game_paused:
-                G.all_sprites_group.update()
-                resolve_enemy_collisions()
-                player.check_enemy_collisions()
-                game_level.update_camera()
-                if player.health <= 0:
+                if player.health > 0:
+                    G.all_sprites_group.update()
+                    resolve_enemy_collisions()
+                    player.check_enemy_collisions()
+                    game_level.update_camera()
+                else:
+                    player.update()  # death animation; the world waits for it
+                if player.death_finished:
                     game_active = False
             if game_active:
                 game_level.draw()

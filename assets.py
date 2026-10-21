@@ -1,4 +1,5 @@
 """Load shared player, projectile, pickup, and sound assets after pygame.init()."""
+import json
 import os
 import pygame
 import globals as G
@@ -37,6 +38,40 @@ def update_sound_volume(volume):
 	if G.gun_shot_sound:
 		G.gun_shot_sound.set_volume(volume)
 
+HERO_ANIMATIONS = ("idle", "run", "jump", "fall", "land", "duck", "shoot",
+                   "duck_shoot", "reload", "hurt", "death")
+
+def placeholder_hero_animations():
+	"""Single green frame for every hero animation, used when frames are missing."""
+	frame = pygame.Surface((24, 56))
+	frame.fill((100, 200, 100))
+	meta = {
+		"frame_size": [24, 56],
+		"anchor": [12, 56],
+		"hitbox": {"stand": [24, 56], "duck": [24, 42]},
+		"anims": {name: {"durations": [100], "loop": True, "muzzle": [[24, 28]]}
+		          for name in HERO_ANIMATIONS},
+	}
+	return meta, {name: [frame] for name in HERO_ANIMATIONS}
+
+def load_hero_animations(root):
+	"""Load every animation folder listed in <root>/anim.json.
+
+	anim.json holds frame durations (ms), looping, the muzzle point of each
+	frame, the frame anchor (placed on the hitbox's bottom centre) and the
+	standing/ducking hitbox sizes. It is written by art/hero/hero_sprite.py.
+	"""
+	try:
+		with open(os.path.join(root, "anim.json"), encoding="utf-8") as f:
+			meta = json.load(f)
+		anims = {name: import_folder(os.path.join(root, name)) for name in meta["anims"]}
+		if all(anims.values()):
+			return meta, anims
+	except (OSError, ValueError, KeyError, pygame.error):
+		pass
+	print("Warning: hero animation frames not found, using placeholder.")
+	return placeholder_hero_animations()
+
 def load_assets():
 	"""
 	Loads all project assets and assigns them into globals.py and into settings.* entries
@@ -69,6 +104,15 @@ def load_assets():
 		assets['player_image'] = pygame.Surface((64,64))
 		assets['player_image'].fill((100, 200, 100))
 		print("Warning: player image not found, using placeholder.")
+
+	# hero animations (player/hero/<animation>/<n>.png, timings in anim.json)
+	assets['hero_meta'], assets['hero_anims'] = load_hero_animations("player/hero")
+
+	try:
+		assets['muzzle_flash_imgs'] = import_folder("effects/muzzle_flash")
+	except Exception:
+		assets['muzzle_flash_imgs'] = []
+		print("Warning: muzzle flash frames not found.")
 
 	# coin icon for UI (take first coin frame if available)
 	if assets['coin_imgs']:
@@ -133,6 +177,9 @@ def load_assets():
 	G.coin_imgs = assets['coin_imgs']
 	G.bullet_img = assets['bullet_img']
 	G.player_image = assets['player_image']
+	G.hero_meta = assets['hero_meta']
+	G.hero_anims = assets['hero_anims']
+	G.muzzle_flash_imgs = assets['muzzle_flash_imgs']
 	G.coin_icon = assets['coin_icon']
 
 	# sounds
