@@ -97,6 +97,8 @@ class Player(pygame.sprite.Sprite):
         self.reload_duration = 1500
 
         self.health = 100
+        self.is_caged = False
+        self.cage = None
 
         self.animate()
 
@@ -195,6 +197,21 @@ class Player(pygame.sprite.Sprite):
     def player_input(self):
         # Processes keyboard and mouse events for movement and actions.
         keys = pygame.key.get_pressed()
+        down_pressed = keys[pygame.K_s]
+        self.tunnel_requested = down_pressed and not self.down_was_pressed and self.on_ground
+        self.down_was_pressed = down_pressed
+
+        if self.is_caged:
+            if keys[pygame.K_d]:
+                self.direction = 1
+            elif keys[pygame.K_a]:
+                self.direction = 0
+            self.velocity_x = 0
+            self.is_shooting = False
+            if keys[pygame.K_e] or keys[pygame.K_SPACE]:
+                if self.cage and not self.cage.is_broken:
+                    self.cage.break_open()
+            return
 
         # Hold S on the ground to duck
         self.set_ducking(keys[pygame.K_s] and self.on_ground)
@@ -266,11 +283,11 @@ class Player(pygame.sprite.Sprite):
         was_airborne = not self.on_ground
 
         # Gravity runs every frame, including while jump/down is held.
-        self.velocity_y = min(self.velocity_y + 1, 30)
+        self.velocity_y = min(self.velocity_y + 1, 20)
         self.on_ground = False
         landing_speed = self.velocity_y
 
-        self.base_player_rect.centerx += self.velocity_x
+        self.base_player_rect.centerx += self.velocity_x 
         self.check_collision(True)
         self.base_player_rect.centery += self.velocity_y
         self.check_collision(False)
@@ -299,6 +316,8 @@ class Player(pygame.sprite.Sprite):
 
     def get_damage(self, amount):
         """Handles damage calculation and death sounds."""
+        if self.is_caged:
+            return
         if G.ui.current_health > 0:
             G.ui.current_health -= amount
             self.health -= amount
@@ -321,6 +340,8 @@ class Player(pygame.sprite.Sprite):
 
     def check_collision(self, horizontal):
         for sprite in G.obstacles_group:
+            if sprite is getattr(self, "cage", None):
+                continue
             if sprite.rect.colliderect(self.base_player_rect):
                 if horizontal:
                     if self.velocity_x > 0: self.base_player_rect.right = sprite.rect.left
@@ -340,7 +361,7 @@ class Player(pygame.sprite.Sprite):
         Crossing an enemy's top while descending is a stomp. Using the
         previous positions also catches fast falls through a small enemy.
         """
-        if self.health <= 0:
+        if self.is_caged or self.health <= 0:
             return
         for enemy in list(G.enemy_group):
             enemy.update_player_grace(self)
@@ -393,6 +414,8 @@ class Player(pygame.sprite.Sprite):
         self.check_reload()
         self.player_input()
         self.move()
+        if self.tunnel_requested and G.game_level is not None:
+            G.game_level.try_enter_tunnel(self)
         if self.shoot_cooldown > 0: self.shoot_cooldown -= 1
         fired = self.shoot()
         self.animate(restart=fired and self.anim_name in ("shoot", "duck_shoot"))

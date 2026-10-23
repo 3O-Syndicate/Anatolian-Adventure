@@ -18,6 +18,7 @@ items_group = pygame.sprite.Group()
 player = None        # instance of Player
 ui = None            # instance of UI
 game_level = None    # instance of GameLevel
+cage = None          # instance of Cage
 
 # Loaded assets that assets.py will set
 coin_imgs = None
@@ -41,6 +42,7 @@ health_potion_sound = None
 hurt_sound = None
 death_sound = None
 gun_shot_sound = None
+cage_break_sound = None
 sound_volume = 0.5
 
 # Screen reference (set in main)

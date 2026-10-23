@@ -1,6 +1,7 @@
-﻿.vs
+.vs
 .idea
 __pycache__
 test_*.py
 art/hero/out/
 art/props/out/
+.venv/
