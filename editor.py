@@ -22,6 +22,7 @@ Keys
   + / -           change the pair number of the tunnel under the cursor
   Ctrl+Z / Ctrl+Y undo / redo
   Ctrl+arrows     resize: columns at the right edge, rows at the top
+                  hold Shift for 10 tiles (also works on the +/- buttons)
   PgUp / PgDn     previous / next level (a missing number starts a new level)
   F5              save and play this level (python main.py --level <n>)
   Ctrl+S          save; problems such as unpaired tunnels are listed
@@ -156,6 +157,9 @@ class Editor:
         self.level = self.open_level()
         self.dirty = False
         self.undo_stack, self.redo_stack = [], []
+        self.stroke = self.stroke_before = self.rect_start = self.last_cell = None
+        self.pan_from = None
+        self.quit_armed = False
         world_h = self.level["height"] * TILESIZE
         self.offset = pygame.Vector2(0, max(0, world_h - SCREEN_H))  # start at the bottom-left
         pygame.display.set_caption(f"Anatolian Adventure - Harita Editörü (bölüm {level_num})")
@@ -174,16 +178,24 @@ class Editor:
         return level_format.new_level(*NEW_LEVEL_SIZE)
 
     def save(self):
-        level_format.save_level(self.level, self.path)
+        self.finish_stroke()
+        try:
+            level_format.check_shape(self.level)
+            level_format.save_level(self.level, self.path)
+        except (OSError, ValueError) as error:
+            self.message = f"Kaydedilemedi: {error}"
+            return False
         self.dirty = False
         self.message = f"Kaydedildi: {self.path}"
         issues = level_format.problems(self.level)
         if issues:
             self.message += ". Uyarı: " + "; ".join(issues)
+        return True
 
     def playtest(self):
         """Save, then run the game on this level in its own window."""
-        self.save()
+        if not self.save():
+            return
         unpaired = [pair for pair, spots in level_format.tunnel_pairs(self.level).items()
                     if len(spots) != 2]
         if unpaired:
@@ -193,6 +205,7 @@ class Editor:
         self.message += " | Oyun başlatıldı"
 
     def switch_level(self, delta):
+        self.finish_stroke()
         if self.dirty:
             self.message = "Önce kaydet (Ctrl+S)"
             return
@@ -210,11 +223,13 @@ class Editor:
 
     def change(self, action):
         """Run a one-shot edit as a single undo step."""
+        self.finish_stroke()
         before = copy.deepcopy(self.level)
         action()
         self.remember(before)
 
     def undo(self):
+        self.finish_stroke()
         if self.undo_stack:
             self.redo_stack.append(self.level)
             self.level = self.undo_stack.pop()
@@ -222,6 +237,7 @@ class Editor:
             self.message = "Geri alındı"
 
     def redo(self):
+        self.finish_stroke()
         if self.redo_stack:
             self.undo_stack.append(self.level)
             self.level = self.redo_stack.pop()
@@ -367,6 +383,7 @@ class Editor:
         level = self.level
         width, height = level["width"] + d_width, level["height"] + d_height
         if not (20 <= width <= 1000 and 15 <= height <= 200):
+            self.message = "Boyut sınırı: 20-1000 x 15-200 karo"
             return
         terrain = [row[:width].ljust(width, level_format.EMPTY) for row in level["terrain"]]
         if d_height > 0:
@@ -381,6 +398,11 @@ class Editor:
         level["terrain"], level["width"], level["height"] = terrain, width, height
         self.offset.y += d_height * TILESIZE
         self.message = f"Boyut: {width}x{height}"
+
+    def resize_canvas(self, d_width, d_height):
+        """The sidebar and keyboard share the same undoable resize action."""
+        step = 10 if pygame.key.get_mods() & pygame.KMOD_SHIFT else 1
+        self.change(lambda: self.resize(d_width * step, d_height * step))
 
     def apply(self, cell, first):
         """Paint or erase at a cell during a stroke; `first` is the button-down cell."""
@@ -443,7 +465,7 @@ class Editor:
         elif ctrl and event.key == pygame.K_y:
             self.redo()
         elif ctrl and event.key in resize:
-            self.change(lambda: self.resize(*resize[event.key]))
+            self.resize_canvas(*resize[event.key])
         elif event.key == pygame.K_F5:
             self.playtest()
         elif event.key == pygame.K_PAGEUP:
@@ -499,8 +521,14 @@ class Editor:
         if event.button == 2 or (event.button == 1 and self.pan_from is not None):
             self.pan_from = None
             return
+        if event.button not in (1, 3):
+            return
+        self.finish_stroke(event.pos)
+
+    def finish_stroke(self, pos=None):
+        """Commit a drag before saving, resizing, undoing or switching levels."""
         if self.rect_start is not None:
-            end = self.to_cell(event.pos) or self.last_cell
+            end = (self.to_cell(pos) if pos is not None else None) or self.last_cell
             if end is not None:
                 tile = self.selected["terrain"] if self.stroke == "paint" else None
                 self.fill_rect(self.rect_start, end, tile)
@@ -677,9 +705,24 @@ class Editor:
         x, y = VIEW_W + 12, 12
         star = " *" if self.dirty else ""
         self.text(f"Bölüm {self.level_num}{star}", (x, y), UI_ACCENT, self.font_big)
-        self.text(f"{self.level['width']}x{self.level['height']} karo", (x, y + 20), UI_DIM)
+        self.text(self.path, (x, y + 20), UI_DIM)
+        self.button(pygame.Rect(x, 48, 118, 22), "Kaydet Ctrl+S", False, self.save)
+        self.button(pygame.Rect(x + 124, 48, 118, 22), "Oyna F5", False, self.playtest)
+        self.button(pygame.Rect(x, 76, 118, 22), "< Önceki", False,
+                    lambda: self.switch_level(-1))
+        self.button(pygame.Rect(x + 124, 76, 118, 22), "Sonraki >", False,
+                    lambda: self.switch_level(1))
+        for y, label, value, delta in (
+                (106, "Genişlik", self.level['width'], (1, 0)),
+                (134, "Yükseklik", self.level['height'], (0, 1))):
+            self.text(f"{label}: {value}", (x, y + 7))
+            self.button(pygame.Rect(x + 174, y, 30, 22), "-", False,
+                        lambda delta=delta: self.resize_canvas(-delta[0], -delta[1]))
+            self.button(pygame.Rect(x + 210, y, 30, 22), "+", False,
+                        lambda delta=delta: self.resize_canvas(*delta))
+        self.text("Sağ/üst kenar; Shift: 10 karo", (x, 162), UI_DIM)
 
-        y += 40
+        y = 182
         tab_w = (PANEL_W - 24 - 8) // 3
         for i, (key, label) in enumerate(TABS):
             rect = pygame.Rect(x + i * (tab_w + 4), y, tab_w, 22)
@@ -687,9 +730,9 @@ class Editor:
                         lambda key=key: setattr(self, "tab", key))
 
         y += 32
-        cell = 74
+        cell = 60
         for i, (key, label, image) in enumerate(self.palette_items()):
-            rect = pygame.Rect(x + (i % 3) * (cell + 6), y + (i // 3) * (cell + 16), cell, cell)
+            rect = pygame.Rect(x + (i % 3) * 82, y + (i // 3) * (cell + 16), cell, cell)
             selected = self.selected[self.tab] == key
             pygame.draw.rect(self.screen, UI_BOX, rect, border_radius=3)
             if image is not None:
@@ -705,7 +748,7 @@ class Editor:
             self.screen.blit(name, name.get_rect(midtop=(rect.centerx, rect.bottom + 3)))
             self.hits.append((rect, lambda key=key: self.selected.__setitem__(self.tab, key)))
 
-        y = 430
+        y = 446
         self.text("Araç", (x, y), UI_DIM)
         self.button(pygame.Rect(x, y + 14, 118, 22), "B Fırça", self.tool == "brush",
                     lambda: setattr(self, "tool", "brush"))
@@ -727,7 +770,7 @@ class Editor:
         help_lines = ["Sol: boya   Sağ: sil", "Orta/Space: kaydır",
                       "Teker: zoom  G: ızgara", "Alt+tık / I: seç",
                       "F: yön  +/-: tünel eşi", "Ctrl+Z/Y: geri al/yinele",
-                      "Ctrl+oklar: boyut", "F5: oyna  PgUp/Dn: bölüm",
+                      "Ctrl+oklar: boyut", "PgUp/Dn: bölüm / yeni",
                       "Ctrl+S: kaydet  Esc: çık"]
         for i, line in enumerate(help_lines):
             self.text(line, (x, SCREEN_H - 114 + i * 12), UI_DIM)
