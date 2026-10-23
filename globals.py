@@ -28,6 +28,14 @@ bullet_img = None
 # Player image
 player_image = None
 
+# Hero animations: anim.json data and {animation name: [frame Surfaces]}
+hero_meta = None
+hero_anims = None
+muzzle_flash_imgs = None
+
+# Enemy artwork: {"walker/walk": (frames facing right, frames facing left), ...}
+enemy_frames = None
+
 # Sounds (assets.py will set these)
 coin_sound = None
 health_potion_sound = None

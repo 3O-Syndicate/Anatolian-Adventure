@@ -52,6 +52,8 @@ def resolve_enemy_collisions():
 
 class WalkingEnemy(pygame.sprite.Sprite):
     is_moving_shell = False
+    # game ticks per animation frame
+    FRAME_TICKS = {"walker/walk": 8, "turtle/walk": 10, "turtle/shell": 1, "turtle/spin": 3}
 
     def __init__(self, pos, direction=-1):
         super().__init__(G.enemy_group, G.all_sprites_group)
@@ -63,6 +65,26 @@ class WalkingEnemy(pygame.sprite.Sprite):
         self.direction = -1 if direction < 0 else 1
         self.speed = 2
         self.velocity_y = 0
+        self.anim_ticks = 0
+        self.animate()
+
+    def current_animation(self):
+        return "walker/walk"
+
+    def animate(self):
+        """Show the artwork frame for the current state, facing the walk direction.
+
+        Frames match the rect size, so swapping them never moves the hitbox.
+        Without artwork the flat placeholder colours stay.
+        """
+        name = self.current_animation()
+        frames = (G.enemy_frames or {}).get(name)
+        if not frames:
+            return
+        right, left = frames
+        frames = right if self.direction > 0 else left
+        self.image = frames[(self.anim_ticks // self.FRAME_TICKS[name]) % len(frames)]
+        self.anim_ticks += 1
 
     def on_stomp(self, player):
         self.kill()
@@ -101,6 +123,7 @@ class WalkingEnemy(pygame.sprite.Sprite):
         # Enemies walk off ledges, as in SMB, and disappear below the map.
         if G.game_level is not None and self.rect.top > G.game_level.floor.get_height():
             self.kill()
+        self.animate()
 
 
 class TurtleEnemy(WalkingEnemy):
@@ -114,14 +137,19 @@ class TurtleEnemy(WalkingEnemy):
     SLIDING = "sliding"
 
     def __init__(self, pos, direction=-1):
+        self.state = self.WALKING  # set first: the base __init__ picks the first frame
         super().__init__(pos, direction)
-        self.state = self.WALKING
-        self.image.fill((50, 170, 70))
+        if not (G.enemy_frames or {}).get("turtle/walk"):
+            self.image.fill((50, 170, 70))  # artwork frames are shared; only tint the placeholder
         self.kicker = None
 
     @property
     def is_moving_shell(self):
         return self.state == self.SLIDING
+
+    def current_animation(self):
+        return {self.WALKING: "turtle/walk", self.SHELL: "turtle/shell",
+                self.SLIDING: "turtle/spin"}[self.state]
 
     def retreat(self):
         bottom = self.rect.midbottom

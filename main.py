@@ -27,18 +27,27 @@ def create_game_objects(font):
     return game_level, player, ui
 
 
-def reset_for_new_game(font):
+def reset_for_new_game(font, start_level=0):
     """Clear the old session before creating fresh map, player, and HUD objects."""
     for sprite in list(G.all_sprites_group):
         sprite.kill()
     G.bullet_group.empty()
     G.items_group.empty()
     G.enemy_group.empty()
-    game_stats.update(coins=0, score=0, current_level=0)
+    game_stats.update(coins=0, score=0, current_level=start_level)
     return create_game_objects(font)
 
 
+def start_level_from_args(args):
+    """`python main.py --level 2` starts and restarts on level 2 (the map editor's F5)."""
+    if "--level" in args:
+        return int(args[args.index("--level") + 1])
+    return 0
+
+
 def main():
+    start_level = start_level_from_args(sys.argv[1:])
+    game_stats["current_level"] = start_level
     pygame.init()
     pygame.mixer.init()
     G.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -90,17 +99,20 @@ def main():
                     pygame.quit()
                     sys.exit()
                 elif not game_active and event.key == pygame.K_p:
-                    game_level, player, ui = reset_for_new_game(font)
+                    game_level, player, ui = reset_for_new_game(font, start_level)
                     game_active = True
                     game_paused = False
 
         if game_active:
             if not game_paused:
-                G.all_sprites_group.update()
-                resolve_enemy_collisions()
-                player.check_enemy_collisions()
-                game_level.update_camera()
-                if player.health <= 0:
+                if player.health > 0:
+                    G.all_sprites_group.update()
+                    resolve_enemy_collisions()
+                    player.check_enemy_collisions()
+                    game_level.update_camera()
+                else:
+                    player.update()  # death animation; the world waits for it
+                if player.death_finished:
                     game_active = False
             if game_active:
                 game_level.draw()
