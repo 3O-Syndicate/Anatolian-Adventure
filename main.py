@@ -62,6 +62,15 @@ def main():
     game_active = True
     game_paused = False
 
+    def display_level_cleared_banner():
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 90))
+        G.screen.blit(overlay, (0, 0))
+        cleared_text = title_font.render("STAGE CLEAR!", True, YELLOW)
+        G.screen.blit(cleared_text, cleared_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 30)))
+        next_text = font.render("Loading next stage...", True, WHITE)
+        G.screen.blit(next_text, next_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30)))
+
     def display_end_screen():
         G.screen.fill(BLACK)
         G.screen.blit(title_font.render("GAME OVER", True, WHITE), (350, 50))
@@ -99,7 +108,7 @@ def main():
                     pygame.quit()
                     sys.exit()
                 elif not game_active and event.key == pygame.K_p:
-                    game_level, player, ui = reset_for_new_game(font, start_level)
+                    game_level, player, ui = reset_for_new_game(font, game_stats["current_level"])
                     game_active = True
                     game_paused = False
 
@@ -110,6 +119,15 @@ def main():
                     resolve_enemy_collisions()
                     player.check_enemy_collisions()
                     game_level.update_camera()
+
+                    if game_level.level_completed:
+                        game_level.level_clear_timer += 1
+                        if game_level.level_clear_timer > 90:
+                            import os
+                            next_lvl = game_stats["current_level"] + 1
+                            if not os.path.isfile(f"levels/{next_lvl}.json"):
+                                next_lvl = 0
+                            game_level, player, ui = reset_for_new_game(font, next_lvl)
                 else:
                     player.update()  # death animation; the world waits for it
                 if player.death_finished:
@@ -117,7 +135,9 @@ def main():
             if game_active:
                 game_level.draw()
                 ui.update()
-                if game_paused:
+                if game_level.level_completed:
+                    display_level_cleared_banner()
+                elif game_paused:
                     display_pause_screen()
             else:
                 display_end_screen()

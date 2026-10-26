@@ -72,6 +72,9 @@ class Player(pygame.sprite.Sprite):
         self.velocity_y = 0
         self.on_ground = False
         self.jump_was_pressed = False
+        self.coyote_timer = 0
+        self.jump_buffer_timer = 0
+        self.fell_in_pit = False
         self.direction = 1 # 0 = left, 1 = right
         self.is_ducking = False
 
@@ -216,11 +219,30 @@ class Player(pygame.sprite.Sprite):
         # Hold S on the ground to duck
         self.set_ducking(keys[pygame.K_s] and self.on_ground)
 
+        # Coyote time & Jump buffering
         jump_pressed = keys[pygame.K_w]
-        if jump_pressed and not self.jump_was_pressed and self.on_ground and not self.is_ducking:
+        if jump_pressed and not self.jump_was_pressed:
+            self.jump_buffer_timer = 8
+        self.jump_was_pressed = jump_pressed
+
+        if self.on_ground:
+            self.coyote_timer = 8
+        elif self.coyote_timer > 0:
+            self.coyote_timer -= 1
+
+        if self.jump_buffer_timer > 0:
+            self.jump_buffer_timer -= 1
+
+        can_jump = (self.on_ground or self.coyote_timer > 0) and not self.is_ducking
+        if self.jump_buffer_timer > 0 and can_jump:
             self.velocity_y = -30
             self.on_ground = False
-        self.jump_was_pressed = jump_pressed
+            self.coyote_timer = 0
+            self.jump_buffer_timer = 0
+
+        # Variable jump height: releasing jump key cuts upward velocity
+        if not jump_pressed and self.velocity_y < -8:
+            self.velocity_y *= 0.55
 
         if keys[pygame.K_s] and self.velocity_y < 0:
             self.velocity_y = -self.velocity_y
@@ -305,6 +327,9 @@ class Player(pygame.sprite.Sprite):
             self.current_ammo -= 1
             self.shoot_cooldown = 10
             self.shot_timer = 9
+            if G.game_level:
+                G.game_level.shake_timer = max(G.game_level.shake_timer, 2)
+                G.game_level.shake_amount = max(G.game_level.shake_amount, 1.5)
             return True
         return False
 
@@ -324,8 +349,14 @@ class Player(pygame.sprite.Sprite):
             if G.ui.current_health > 0:
                 if G.hurt_sound: G.hurt_sound.play()
                 self.hurt_timer = 18
+                if G.game_level:
+                    G.game_level.shake_timer = 10
+                    G.game_level.shake_amount = 5
             else:
                 if G.death_sound: G.death_sound.play()
+                if G.game_level:
+                    G.game_level.shake_timer = 14
+                    G.game_level.shake_amount = 6
         if G.ui.current_health <= 0:
             G.ui.current_health = 0
             self.health = 0
@@ -390,9 +421,38 @@ class Player(pygame.sprite.Sprite):
                 self.get_damage(self.health)
                 break
 
+    def check_level_objects(self):
+        if G.game_level is None or self.health <= 0:
+            return
+        # Checkpoints
+        for cp in getattr(G.game_level, "checkpoints", []):
+            if not cp.activated and self.base_player_rect.colliderect(cp.rect):
+                cp.activated = True
+                G.game_level.player_spawn = (cp.rect.centerx, cp.rect.bottom)
+                from settings import game_stats
+                game_stats["score"] += 200
+                if getattr(G, "create_floating_text", None):
+                    G.create_floating_text("CHECKPOINT!", (cp.rect.centerx, cp.rect.top - 12), (100, 255, 150))
+
+        # Goal
+        goal = getattr(G.game_level, "goal", None)
+        if goal and not getattr(G.game_level, "level_completed", False):
+            if self.base_player_rect.colliderect(goal.rect):
+                G.game_level.level_completed = True
+                from settings import game_stats
+                game_stats["score"] += 1000
+                if getattr(G, "create_floating_text", None):
+                    G.create_floating_text("STAGE CLEAR! +1000", (goal.rect.centerx, goal.rect.top - 16), (255, 215, 0))
+                if G.game_level:
+                    G.game_level.shake_timer = 12
+                    G.game_level.shake_amount = 4
+
     def update_death(self):
         """Mario-style death: freeze in the death pose, pop up, then fall off screen."""
         self.death_timer += 1
+        if self.fell_in_pit and self.death_timer == 1 and G.game_level:
+            self.base_player_rect.centery = int(G.game_level.offset.y + HEIGHT + 10)
+            self.place_image()
         if self.flash is not None:
             self.flash.kill()  # the world is frozen, so it would never finish
         if self.death_timer == 30:
@@ -408,6 +468,14 @@ class Player(pygame.sprite.Sprite):
         if self.health <= 0:
             self.update_death()
             return
+
+        # Pit death check
+        if G.game_level is not None and self.base_player_rect.top > G.game_level.floor.get_height() + 16:
+            self.fell_in_pit = True
+            self.get_damage(self.health)
+            return
+
+        self.check_level_objects()
         for timer in ("shot_timer", "land_timer", "hurt_timer"):
             if getattr(self, timer) > 0:
                 setattr(self, timer, getattr(self, timer) - 1)

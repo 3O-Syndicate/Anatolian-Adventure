@@ -47,3 +47,6 @@ sound_volume = 0.5
 
 # Screen reference (set in main)
 screen = None
+
+# Floating combat / pickup text helper
+create_floating_text = None

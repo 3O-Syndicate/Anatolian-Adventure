@@ -17,20 +17,28 @@ class Tile(pygame.sprite.Sprite):
 
 
 class LevelObject(pygame.sprite.Sprite):
-    """Checkpoint or goal artwork standing in its tile. No behaviour yet."""
+    """Checkpoint or goal artwork standing in its tile."""
     FRAME_TICKS = 20
 
-    def __init__(self, frames, cell):
+    def __init__(self, frames, cell, kind="goal"):
         super().__init__(G.all_sprites_group)
+        self.kind = kind
         self.frames = frames
         self.ticks = 0
         self.image = frames[0]
+        self.activated = False
         x, y = cell
         self.rect = self.image.get_rect(bottomleft=(x * TILESIZE, (y + 1) * TILESIZE))
 
     def update(self):
-        self.ticks += 1
-        self.image = self.frames[(self.ticks // self.FRAME_TICKS) % len(self.frames)]
+        if self.kind == "goal":
+            self.ticks += 1
+            self.image = self.frames[(self.ticks // self.FRAME_TICKS) % len(self.frames)]
+        elif self.kind == "checkpoint":
+            if self.activated and len(self.frames) > 1:
+                self.image = self.frames[1]
+            else:
+                self.image = self.frames[0]
 
 
 class GameLevel:
@@ -43,6 +51,10 @@ class GameLevel:
         self.enemy_spawn_pos = []
         self.turtle_spawn_pos = []
         self.player_spawn = (0, 0)
+        self.checkpoints = []
+        self.goal = None
+        self.level_completed = False
+        self.level_clear_timer = 0
         self.tunnels = {}
         self.decor_images = {}
         self.prepare(level_num)
@@ -99,8 +111,11 @@ class GameLevel:
                 TurtleEnemy(pos, entity.get("dir", -1))
             elif kind in ("checkpoint", "goal"):
                 frames = objects[kind] or [self.placeholder((TILESIZE, 2 * TILESIZE))]
-                # checkpoints stay unlit until they have behaviour
-                LevelObject(frames[:1] if kind == "checkpoint" else frames, (x, y))
+                obj = LevelObject(frames, (x, y), kind=kind)
+                if kind == "checkpoint":
+                    self.checkpoints.append(obj)
+                elif kind == "goal":
+                    self.goal = obj
             elif kind == "tunnel":
                 tunnel_cells.setdefault(entity["pair"], []).append(
                     pygame.Rect(pos, (TILESIZE, TILESIZE)))
@@ -191,10 +206,11 @@ class GameLevel:
 
     def draw(self):
         G.screen.fill(self.background)
+        draw_offset = self.offset + self.shake_offset
         if self.decor_back is not None:
-            G.screen.blit(self.decor_back, -self.offset)
-        G.screen.blit(self.floor, -self.offset)
+            G.screen.blit(self.decor_back, -draw_offset)
+        G.screen.blit(self.floor, -draw_offset)
         for sprite in G.all_sprites_group:
-            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - self.offset)
+            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
         if self.decor_front is not None:
-            G.screen.blit(self.decor_front, -self.offset)
+            G.screen.blit(self.decor_front, -draw_offset)
