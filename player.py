@@ -128,6 +128,7 @@ class Player(pygame.sprite.Sprite):
 
     def animate(self, restart=False):
         name = self.current_animation()
+        prev_frame = self.frame_index
         if restart or name != self.anim_name:
             self.anim_name = name
             self.frame_index = 0
@@ -143,6 +144,17 @@ class Player(pygame.sprite.Sprite):
         frames = self.frames_right if self.direction == 1 else self.frames_left
         self.image = frames[name][self.frame_index]
         self.place_image()
+
+        # Footstep audio synced with run animation (frames 0 and 3 in the 6-frame cycle)
+        if name == "run" and self.on_ground and not self.is_ducking:
+            if self.frame_index != prev_frame and self.frame_index in (0, 3):
+                self.play_footstep()
+
+    def play_footstep(self):
+        sounds = getattr(G, "footstep_sounds", None)
+        if sounds:
+            import random
+            random.choice(sounds).play()
 
     def advance_frame(self, speed):
         info = self.anim_meta["anims"][self.anim_name]
@@ -322,7 +334,10 @@ class Player(pygame.sprite.Sprite):
     def shoot(self):
         """Starts a shot; the bullet leaves from the muzzle once the frame is chosen."""
         if self.shoot_cooldown == 0 and self.is_shooting:
-            if G.gun_shot_sound:
+            if getattr(G, "gun_shot_sounds", None) and len(G.gun_shot_sounds) > 0:
+                import random
+                random.choice(G.gun_shot_sounds).play()
+            elif G.gun_shot_sound:
                 G.gun_shot_sound.play()
             self.current_ammo -= 1
             self.shoot_cooldown = 10

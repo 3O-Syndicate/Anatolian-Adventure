@@ -89,6 +89,8 @@ class WalkingEnemy(pygame.sprite.Sprite):
     def on_stomp(self, player):
         from settings import game_stats
         game_stats["score"] += 100
+        if getattr(G, "enemy_death_sound", None):
+            G.enemy_death_sound.play()
         if getattr(G, "create_floating_text", None):
             G.create_floating_text("+100", self.rect.center, (255, 220, 50))
         self.kill()
@@ -96,6 +98,8 @@ class WalkingEnemy(pygame.sprite.Sprite):
     def on_bullet_hit(self, bullet):
         from settings import game_stats
         game_stats["score"] += 100
+        if getattr(G, "enemy_death_sound", None):
+            G.enemy_death_sound.play()
         if getattr(G, "create_floating_text", None):
             G.create_floating_text("+100", self.rect.center, (255, 220, 50))
         self.kill()
@@ -187,6 +191,8 @@ class TurtleEnemy(WalkingEnemy):
 
     def on_stomp(self, player):
         from settings import game_stats
+        if getattr(G, "enemy_death_sound", None):
+            G.enemy_death_sound.play()
         if self.state == self.WALKING:
             self.retreat()
             game_stats["score"] += 50
@@ -207,6 +213,8 @@ class TurtleEnemy(WalkingEnemy):
 
     def on_bullet_hit(self, bullet):
         from settings import game_stats
+        if getattr(G, "enemy_death_sound", None):
+            G.enemy_death_sound.play()
         if self.state == self.WALKING:
             self.retreat()
             game_stats["score"] += 50

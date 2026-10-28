@@ -56,6 +56,7 @@ def main():
     font = pygame.font.Font("font/PublicPixel.ttf", 20)
     title_font = pygame.font.Font("font/PublicPixel.ttf", 50)
     assets.load_assets()
+    assets.play_bgm()
     game_level, player, ui = create_game_objects(font)
     volume_image = pygame.image.load("sounds/volume_icon.jpg").convert_alpha()
     volume_button = Button(WIDTH - 70, 20, volume_image, 0.05)
@@ -104,6 +105,11 @@ def main():
                         player.cage.break_open()
                 elif game_active and event.key == pygame.K_ESCAPE:
                     game_paused = not game_paused
+                    try:
+                        vol = 0.1 if game_paused else 0.25
+                        pygame.mixer.music.set_volume(G.sound_volume * vol)
+                    except Exception:
+                        pass
                 elif game_active and game_paused and event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
@@ -111,6 +117,7 @@ def main():
                     game_level, player, ui = reset_for_new_game(font, game_stats["current_level"])
                     game_active = True
                     game_paused = False
+                    assets.play_bgm()
 
         if game_active:
             if not game_paused:
@@ -132,6 +139,10 @@ def main():
                     player.update()  # death animation; the world waits for it
                 if player.death_finished:
                     game_active = False
+                    try:
+                        pygame.mixer.music.fadeout(800)
+                    except Exception:
+                        pass
             if game_active:
                 game_level.draw()
                 ui.update()
