@@ -36,6 +36,9 @@ class LevelObject(pygame.sprite.Sprite):
 class GameLevel:
     def __init__(self, level_num):
         self.offset = pygame.Vector2()
+        self.shake_timer = 0
+        self.shake_amount = 0
+        self.shake_offset = pygame.Vector2()
         self.health_spawn_pos = []
         self.enemy_spawn_pos = []
         self.turtle_spawn_pos = []
@@ -55,6 +58,7 @@ class GameLevel:
         self.background = tuple(level["background"])
         self.floor = pygame.Surface(size, pygame.SRCALPHA)
         textures = TileTextures()
+        tunnel_markers = {}
         G.obstacles_group.empty()
         for row, line in enumerate(level["terrain"]):
             for col, char in enumerate(line):
@@ -137,9 +141,53 @@ class GameLevel:
         surface.fill((230, 200, 60))
         return surface
 
+    def try_enter_tunnel(self, player):
+        """Enter a mouth while standing on the floor immediately beneath it.
+
+        Mouth markers occupy empty space, not solid tiles. Centering the player
+        over the marker prevents their wide sprite from entering a nearby mouth.
+        """
+        if not player.on_ground or player.health <= 0:
+            return False
+        for mouths in self.tunnels.values():
+            for index, mouth in enumerate(mouths):
+                if not (mouth.left <= player.base_player_rect.centerx < mouth.right
+                        and player.base_player_rect.bottom == mouth.bottom):
+                    continue
+                destination = mouths[1 - index]
+                target = player.base_player_rect.copy()
+                target.midbottom = (destination.centerx, destination.bottom)
+                if (not self.floor.get_rect().contains(target)
+                        or any(target.colliderect(tile.rect) for tile in G.obstacles_group)):
+                    return False
+                player.base_player_rect = target
+                player.rect.center = target.center
+                # Do not treat the teleport path as movement for stomp detection.
+                player.previous_rect = target.copy()
+                player.vec_pos.update(target.center)
+                player.velocity_x = 0
+                player.velocity_y = 0
+                player.on_ground = any(
+                    target.bottom == tile.rect.top
+                    and target.left < tile.rect.right and target.right > tile.rect.left
+                    for tile in G.obstacles_group
+                )
+                self.offset.update(pygame.Vector2(target.center) - (WIDTH // 2, HEIGHT // 2))
+                return True
+        return False
+
     def update_camera(self):
         target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)
         self.offset += (target - self.offset) * 0.05
+        if self.shake_timer > 0:
+            import random
+            self.shake_timer -= 1
+            self.shake_offset = pygame.Vector2(
+                random.uniform(-self.shake_amount, self.shake_amount),
+                random.uniform(-self.shake_amount, self.shake_amount),
+            )
+        else:
+            self.shake_offset = pygame.Vector2()
 
     def draw(self):
         G.screen.fill(self.background)

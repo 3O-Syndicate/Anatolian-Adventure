@@ -37,6 +37,8 @@ def update_sound_volume(volume):
 		G.death_sound.set_volume(volume)
 	if G.gun_shot_sound:
 		G.gun_shot_sound.set_volume(volume)
+	if G.cage_break_sound:
+		G.cage_break_sound.set_volume(volume)
 
 HERO_ANIMATIONS = ("idle", "run", "jump", "fall", "land", "duck", "shoot",
                    "duck_shoot", "reload", "hurt", "death")
@@ -100,7 +102,9 @@ def load_assets():
 
 	# player base image (single image path)
 	try:
-		assets['player_image'] = safe_load_image("player/0.png")
+		raw_player = safe_load_image("player/0.png")
+		bbox = raw_player.get_bounding_rect()
+		assets['player_image'] = raw_player.subsurface(bbox).copy()
 	except FileNotFoundError:
 		assets['player_image'] = pygame.Surface((64,64))
 		assets['player_image'].fill((100, 200, 100))
@@ -169,6 +173,11 @@ def load_assets():
 		assets['gun_shot_sound'] = None
 		print("Warning: gunshot sound not found.")
 
+	try:
+		assets['cage_break_sound'] = safe_load_sound("sounds/cage_break.wav")
+	except FileNotFoundError:
+		assets['cage_break_sound'] = None
+
 	# --- Items: pre-load item images and (where applicable) animation folders ---
 	for item_name, item_info in settings.items.items():
 		img_path = item_info.get("image_path")
@@ -203,6 +212,7 @@ def load_assets():
 	G.hurt_sound = assets.get('hurt_sound')
 	G.death_sound = assets.get('death_sound')
 	G.gun_shot_sound = assets.get('gun_shot_sound')
+	G.cage_break_sound = assets.get('cage_break_sound')
 
 	# return for caller if needed
 	return assets

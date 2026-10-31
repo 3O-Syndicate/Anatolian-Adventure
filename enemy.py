@@ -10,6 +10,8 @@ def resolve_enemy_collisions():
     Resolve each pair once, so sprite update order cannot reverse the same
     pair twice. Previous positions also detect enemies crossing in one frame.
     """
+    if G.player is not None and getattr(G.player, "is_caged", False):
+        return
     enemies = sorted(G.enemy_group, key=lambda enemy: enemy.previous_rect.centerx)
     for index, left in enumerate(enemies):
         for right in enemies[index + 1:]:
@@ -95,6 +97,8 @@ class WalkingEnemy(pygame.sprite.Sprite):
         pass
 
     def update(self):
+        if G.player is not None and getattr(G.player, "is_caged", False):
+            return
         self.previous_rect = self.rect.copy()
         self.position.x += self.direction * self.speed
         self.rect.x = round(self.position.x)

@@ -9,6 +9,7 @@ from button import Button
 from game_level import GameLevel
 from enemy import resolve_enemy_collisions
 import assets
+from cage import Cage
 
 
 def create_game_objects(font):
@@ -17,6 +18,10 @@ def create_game_objects(font):
     player = Player(game_level.player_spawn)
     G.player = player
     G.all_sprites_group.add(player)
+    prompt_font = pygame.font.Font("font/PublicPixel.ttf", 11)
+    cage = Cage(player, prompt_font)
+    G.cage = cage
+    player.cage = cage
     ui = UI(font)
     G.ui = ui
     return game_level, player, ui
@@ -85,7 +90,10 @@ def main():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
-                if game_active and event.key == pygame.K_ESCAPE:
+                if game_active and not game_paused and player.is_caged and (event.key == pygame.K_e or event.key == pygame.K_SPACE):
+                    if player.cage and not player.cage.is_broken:
+                        player.cage.break_open()
+                elif game_active and event.key == pygame.K_ESCAPE:
                     game_paused = not game_paused
                 elif game_active and game_paused and event.key == pygame.K_q:
                     pygame.quit()
