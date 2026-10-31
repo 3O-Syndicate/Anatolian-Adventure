@@ -41,9 +41,15 @@ coin_sound = None
 health_potion_sound = None
 hurt_sound = None
 death_sound = None
+enemy_death_sound = None
 gun_shot_sound = None
+gun_shot_sounds = []
 cage_break_sound = None
+footstep_sounds = []
 sound_volume = 0.5
 
 # Screen reference (set in main)
 screen = None
+
+# Floating combat / pickup text helper
+create_floating_text = None

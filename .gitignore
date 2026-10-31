@@ -5,3 +5,4 @@ test_*.py
 art/hero/out/
 art/props/out/
 .venv/
+.DS_Store

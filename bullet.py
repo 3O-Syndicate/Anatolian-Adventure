@@ -1,4 +1,4 @@
-"""Player projectiles with wall collisions and a limited lifetime."""
+"""Player projectiles with wall collisions, enemy damage, and a limited lifetime."""
 import math
 import pygame
 import globals as G
@@ -24,6 +24,18 @@ class Bullet(pygame.sprite.Sprite):
         self.x += self.x_vel
         self.y += self.y_vel
         self.rect.center = (int(self.x), int(self.y))
+
+        # Check enemy collisions
+        for enemy in list(G.enemy_group):
+            if enemy.alive() and self.rect.colliderect(enemy.rect):
+                if hasattr(enemy, "on_bullet_hit"):
+                    enemy.on_bullet_hit(self)
+                else:
+                    enemy.kill()
+                self.kill()
+                return
+
+        # Check obstacles and lifetime
         if (pygame.time.get_ticks() - self.spawn_time > self.bullet_lifetime
                 or pygame.sprite.spritecollideany(self, G.obstacles_group)):
             self.kill()
