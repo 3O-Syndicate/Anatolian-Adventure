@@ -75,6 +75,8 @@ class Player(pygame.sprite.Sprite):
         self.coyote_timer = 0
         self.jump_buffer_timer = 0
         self.fell_in_pit = False
+        self.down_was_pressed = False  # S held while the game starts must not crash the tunnel check
+        self.tunnel_requested = False
         self.direction = 1 # 0 = left, 1 = right
         self.is_ducking = False
 
@@ -85,6 +87,7 @@ class Player(pygame.sprite.Sprite):
         self.death_timer = 0
         self.death_finished = False
         self.flash = None
+        self.invulnerable_timer = 0  # after a respawn, enemies cannot hurt the player
 
         # --- WEAPON & AMMO SYSTEM ---
         self.is_shooting = False
@@ -433,6 +436,8 @@ class Player(pygame.sprite.Sprite):
                 self.velocity_y = -15
                 self.on_ground = False
             elif self.base_player_rect.colliderect(enemy.rect) and enemy.on_player_contact(self):
+                if self.invulnerable_timer > 0:
+                    continue
                 self.get_damage(self.health)
                 break
 
@@ -444,6 +449,7 @@ class Player(pygame.sprite.Sprite):
             if not cp.activated and self.base_player_rect.colliderect(cp.rect):
                 cp.activated = True
                 G.game_level.player_spawn = (cp.rect.centerx, cp.rect.bottom)
+                G.game_level.last_checkpoint = cp
                 from settings import game_stats
                 game_stats["score"] += 200
                 if getattr(G, "create_floating_text", None):
@@ -461,6 +467,29 @@ class Player(pygame.sprite.Sprite):
                 if G.game_level:
                     G.game_level.shake_timer = 12
                     G.game_level.shake_amount = 4
+
+    def respawn(self, feet):
+        """Stand up again at a checkpoint: full health, same ammo, a short grace period.
+
+        The world keeps its state (defeated enemies stay defeated, collected
+        coins stay collected), so dying costs only the way back.
+        """
+        self.base_player_rect = pygame.Rect((0, 0), self.stand_size)
+        self.base_player_rect.midbottom = feet
+        self.previous_rect = self.base_player_rect.copy()
+        self.vec_pos.update(self.base_player_rect.center)
+        self.velocity_x = self.velocity_y = 0
+        self.on_ground = True
+        self.is_ducking = False
+        self.fell_in_pit = False
+        self.death_timer = 0
+        self.death_finished = False
+        self.hurt_timer = self.shot_timer = self.land_timer = 0
+        self.health = 100
+        if G.ui is not None:
+            G.ui.current_health = G.ui.maximum_health
+        self.invulnerable_timer = 120
+        self.animate(restart=True)
 
     def update_death(self):
         """Mario-style death: freeze in the death pose, pop up, then fall off screen."""
@@ -502,5 +531,10 @@ class Player(pygame.sprite.Sprite):
         if self.shoot_cooldown > 0: self.shoot_cooldown -= 1
         fired = self.shoot()
         self.animate(restart=fired and self.anim_name in ("shoot", "duck_shoot"))
+        if self.invulnerable_timer > 0:
+            self.invulnerable_timer -= 1
+            if (self.invulnerable_timer // 4) % 2:  # blink while enemies cannot hurt
+                self.image = self.image.copy()
+                self.image.set_alpha(90)
         if fired:
             self.fire_from_muzzle()

@@ -88,6 +88,7 @@ class GameLevel:
         self.player_spawn = (0, 0)
         self.checkpoints = []
         self.goal = None
+        self.last_checkpoint = None  # the player respawns here after dying
         self.level_completed = False
         self.level_clear_timer = 0
         self.tunnels = {}
@@ -229,9 +230,13 @@ class GameLevel:
                     and target.left < tile.rect.right and target.right > tile.rect.left
                     for tile in G.obstacles_group
                 )
-                self.offset.update(pygame.Vector2(target.center) - (WIDTH // 2, HEIGHT // 2))
+                self.snap_camera()
                 return True
         return False
+
+    def snap_camera(self):
+        """Centre the view on the player at once (after a teleport or respawn)."""
+        self.offset.update(pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2))
 
     def update_camera(self):
         target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)

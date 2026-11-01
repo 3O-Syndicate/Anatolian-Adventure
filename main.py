@@ -137,7 +137,10 @@ def main():
                             game_level, player, ui = reset_for_new_game(font, next_lvl)
                 else:
                     player.update()  # death animation; the world waits for it
-                if player.death_finished:
+                if player.death_finished and game_level.last_checkpoint is not None:
+                    player.respawn(game_level.last_checkpoint.rect.midbottom)
+                    game_level.snap_camera()
+                elif player.death_finished:
                     game_active = False
                     try:
                         pygame.mixer.music.fadeout(800)

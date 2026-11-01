@@ -149,6 +149,7 @@ class Cage(pygame.sprite.Sprite):
     """The starting iron cage enclosing the player."""
 
     def __init__(self, player, font):
+        ground_y = self.floor_below(player.base_player_rect)  # before the cage joins the obstacles
         super().__init__(G.obstacles_group, G.all_sprites_group)
         self.player = player
         self.font = font
@@ -157,7 +158,6 @@ class Cage(pygame.sprite.Sprite):
         self.is_broken = False
 
         # Anchor player directly to the ground inside the cage
-        ground_y = 704
         self.player.base_player_rect.bottom = ground_y
         self.player.rect.center = self.player.base_player_rect.center
         self.player.vec_pos = pygame.math.Vector2(self.player.base_player_rect.center)
@@ -171,6 +171,14 @@ class Cage(pygame.sprite.Sprite):
 
         # Floating interaction prompt
         self.prompt = CagePrompt(self, font)
+
+    @staticmethod
+    def floor_below(rect):
+        """Top of the first solid tile under `rect`: the floor of the level's start position."""
+        tops = [tile.rect.top for tile in G.obstacles_group
+                if tile.rect.left < rect.right and tile.rect.right > rect.left
+                and tile.rect.top >= rect.top]
+        return min(tops, default=rect.bottom)
 
     def build_cage_surface(self):
         w, h = self.width, self.height
