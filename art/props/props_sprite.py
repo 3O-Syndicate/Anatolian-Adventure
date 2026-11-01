@@ -280,10 +280,62 @@ def goal(frame):
     return c.image()
 
 
+def chest(opened):
+    """Treasure chest: wooden box, iron bands, brass lock."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    c.flat(K.box(4, 18, 27, 29).mask, "wood", "body")
+    if opened:
+        c.flat(K.box(5, 7, 26, 12).mask, "wood", "lid")
+        c.flat(K.box(6, 13, 25, 17).mask, "shell", "inside", base=0)
+    else:
+        lid = K.ellipse(15.5, 18, 12, 7).where(K.YY < 18)
+        c.draw(lid, "wood", "lid")
+    for x in (8, 23):
+        c.flat(K.box(x, 12 if not opened else 7, x + 1, 29).mask & c.alpha, "metal", f"band{x}")
+    if not opened:
+        c.draw(K.ellipse(15.5, 19.5, 2.4, 2.6), "brass", "lock")
+        c.px(RAMPS["hair"][0], (15, 20), (15, 21))
+    return c.image()
+
+
+def wallet():
+    """Leather wallet with a banknote sticking out."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    c.flat(K.box(12, 15, 21, 20).mask, "leaf", "note", base=3)
+    c.px(RAMPS["leaf"][1], (15, 17), (16, 17), (17, 17))
+    c.draw(K.ellipse(15.5, 23.5, 8.5, 6).where((K.YY > 18.5) & (K.YY < 29)), "belt", "wallet")
+    c.px(RAMPS["belt"][0], *[(x, 22) for x in range(9, 23)])
+    c.draw(K.ellipse(15.5, 25, 1.4, 1.4), "brass", "clasp")
+    return c.image()
+
+
 OBJECTS = {
     "checkpoint": [checkpoint(False), checkpoint(True)],
     "goal": [goal(0), goal(1)],
+    "chest": [chest(False), chest(True)],
+    "wallet": [wallet()],
 }
+
+
+# --------------------------------------------------------------------------
+# Terrain tiles (tiles/<id>.png, 32x32, repeat sideways)
+# --------------------------------------------------------------------------
+
+def cloud_tile():
+    """Cloud platform: puffy top that repeats every 32 px, flat shaded underside."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    body = K.box(0, 6, 31, 25)
+    for cx in (0, 16, 32):
+        body = body | K.ellipse(cx, 8, 9, 7.5)
+    body = body | K.ellipse(8, 25, 9, 4.5) | K.ellipse(24, 25, 9, 4.5)
+    c.draw(body.where((K.YY > 1) & (K.YY < 30)), "cloud", "cloud", thresh=(0.05, 0.30, 0.70))
+    return c.image(outline=(150, 182, 224))
+
+
+TILES = {4: cloud_tile()}
 
 
 # --------------------------------------------------------------------------
@@ -336,6 +388,8 @@ if __name__ == "__main__":
         img.save(decor_dir / f"{name}.png")
     for name, frames in OBJECTS.items():
         save_frames(ROOT / "objects" / name, frames)
+    for tile_id, img in TILES.items():
+        img.save(ROOT / "tiles" / f"{tile_id}.png")
     preview().save(OUT / "props_preview.png")
     print("enemies:", sum(len(f) for f in ENEMIES.values()), "frames; decor:", len(DECOR),
           "; objects:", sum(len(f) for f in OBJECTS.values()), "frames")

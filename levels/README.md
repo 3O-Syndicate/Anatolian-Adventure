@@ -30,7 +30,8 @@ The right panel has three tabs: **Zemin** (terrain), **Dekor** (decor) and
 | `G` | Grid on/off |
 | Alt + click, or `I` | Pick what is under the cursor |
 | `F` | Turn the enemy under the cursor around |
-| `+` / `-` | Change the pair number of the tunnel under the cursor |
+| `+` / `-` | Change the pair number of the tunnel, or the item of the chest, under the cursor |
+| `T` | Type the text of the hint sign under the cursor (`Enter` saves, `Esc` cancels); a new sign asks for it right away |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
 | `Ctrl` + arrows | Resize: columns at the right edge, rows at the top |
 | `PgUp` / `PgDn` | Previous / next level; a new number starts an empty level |
@@ -86,7 +87,8 @@ Coordinates are tile columns (`x`) and rows (`y`), counted from the top left.
 | `1` | Ground (`tiles/ground.png`) |
 | `2` | Underground (`tiles/underground.png`) |
 | `3` | Brick (`tiles/brick.png`) |
-| `4`-`9`, `A`-`Z` | Terrain IDs 4-35, texture `tiles/<ID>.png` |
+| `4` | Cloud platform (`tiles/4.png`) |
+| `5`-`9`, `A`-`Z` | Terrain IDs 5-35, texture `tiles/<ID>.png` |
 
 Textures are configured in `TERRAIN_TEXTURES` in `settings.py`; other IDs
 look for `tiles/<ID>.png`, and missing textures use flat coloured
@@ -108,6 +110,9 @@ is drawn behind the terrain, `front` in front of the player.
 | `tunnel` | Tunnel mouth, in an empty tile right above a floor | `pair`: mouths with the same pair connect |
 | `checkpoint` | Checkpoint flag (artwork only for now) | |
 | `goal` | Goal flag (artwork only for now) | |
+| `chest` | Treasure chest | `item`: `acid`, `shotgun` or `armor` |
+| `wallet` | Dropped wallet | |
+| `hint` | Sign whose text pops up in a bubble while the player is near | `text` |
 
 ## Old colour masks
 

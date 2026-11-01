@@ -7,7 +7,7 @@ Change a script and run it again to rebuild every frame.
 | Script | Writes |
 | --- | --- |
 | `art/hero/hero_sprite.py` | `player/hero/<animation>/<n>.png`, `player/hero/anim.json`, `effects/muzzle_flash/` |
-| `art/props/props_sprite.py` | `enemies/`, `decor/`, `objects/` |
+| `art/props/props_sprite.py` | `enemies/`, `decor/`, `objects/`, `tiles/4.png` (cloud) |
 
 ```
 python art/hero/hero_sprite.py
