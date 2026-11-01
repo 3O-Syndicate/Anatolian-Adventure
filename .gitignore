@@ -6,3 +6,4 @@ art/hero/out/
 art/props/out/
 .venv/
 .DS_Store
+test_*.png

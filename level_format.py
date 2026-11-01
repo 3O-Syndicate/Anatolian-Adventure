@@ -20,6 +20,8 @@ A level is a dict:
                 one tile each, see ENTITY_TYPES. Extra keys per type:
                   walker/turtle  dir: -1 starts walking left, 1 right
                   tunnel         pair: two tunnels with the same pair connect
+                  chest          item: one of CHEST_ITEMS
+                  hint           text: the tip shown on the sign
 
 Old colour-mask levels (levels/<n>_mask.png) still load: they are converted
 with mask_to_level(). Convert one for good with:
@@ -47,7 +49,11 @@ ENTITY_TYPES = {
     "tunnel":     ({"pair": 1}, "pairs"),
     "checkpoint": ({}, "any"),
     "goal":       ({}, "one"),
+    "chest":      ({"item": "shotgun"}, "any"),
+    "wallet":     ({}, "any"),
+    "hint":       ({"text": ""}, "any"),
 }
+CHEST_ITEMS = ("acid", "shotgun", "armor")
 DECOR_LAYERS = ("back", "front")
 
 

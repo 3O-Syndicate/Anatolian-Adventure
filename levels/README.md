@@ -6,11 +6,17 @@ Each level is `levels/<n>.json`. Edit them with the map editor:
 python editor.py 1
 ```
 
-`levels/0.json` is the old test map converted from `0_mask.png`.
-`levels/1.json` is a sample level that shows every feature (decor on both
-layers, coins, a tunnel pair, enemies facing both ways, checkpoint, goal);
-rework or replace it freely. Play a level directly with
-`python main.py --level 1`, or press F5 in the editor.
+The game starts at level 0 and moves to the next number when the goal flag
+is touched.
+
+| File | Level |
+| --- | --- |
+| `levels/0.json` | Tutorial: Turkish hint signs teach moving, jumping, shooting, tunnels, the checkpoint, chests and acid; the side cave under the pipe holds the acid and shotgun chests |
+| `levels/1.json` | Sample level that shows every feature (decor on both layers, coins, a tunnel pair, enemies facing both ways, checkpoint, goal); rework or replace it freely |
+| `levels/2.json` | Oğuzhan's test map with the teleport tunnels, converted from `2_mask.png`; it has no goal yet, so it stays last |
+
+Play a level directly with `python main.py --level 1`, or press F5 in the
+editor.
 
 ## Map editor
 
@@ -30,7 +36,8 @@ The right panel has three tabs: **Zemin** (terrain), **Dekor** (decor) and
 | `G` | Grid on/off |
 | Alt + click, or `I` | Pick what is under the cursor |
 | `F` | Turn the enemy under the cursor around |
-| `+` / `-` | Change the pair number of the tunnel under the cursor |
+| `+` / `-` | Change the pair number of the tunnel, or the item of the chest, under the cursor |
+| `T` | Type the text of the hint sign under the cursor (`Enter` saves, `Esc` cancels); a new sign asks for it right away |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
 | `Ctrl` + arrows | Resize: columns at the right edge, rows at the top |
 | `PgUp` / `PgDn` | Previous / next level; a new number starts an empty level |
@@ -86,7 +93,8 @@ Coordinates are tile columns (`x`) and rows (`y`), counted from the top left.
 | `1` | Ground (`tiles/ground.png`) |
 | `2` | Underground (`tiles/underground.png`) |
 | `3` | Brick (`tiles/brick.png`) |
-| `4`-`9`, `A`-`Z` | Terrain IDs 4-35, texture `tiles/<ID>.png` |
+| `4` | Cloud platform (`tiles/4.png`) |
+| `5`-`9`, `A`-`Z` | Terrain IDs 5-35, texture `tiles/<ID>.png` |
 
 Textures are configured in `TERRAIN_TEXTURES` in `settings.py`; other IDs
 look for `tiles/<ID>.png`, and missing textures use flat coloured
@@ -106,8 +114,11 @@ is drawn behind the terrain, `front` in front of the player.
 | `health` | Health pickup | |
 | `coin` | Coin | |
 | `tunnel` | Tunnel mouth, in an empty tile right above a floor | `pair`: mouths with the same pair connect |
-| `checkpoint` | Checkpoint flag (artwork only for now) | |
-| `goal` | Goal flag (artwork only for now) | |
+| `checkpoint` | Checkpoint flag; after touching it the player respawns there instead of losing | |
+| `goal` | Goal flag; touching it finishes the level | |
+| `chest` | Treasure chest, opens on touch: `shotgun` +30 ammo, `armor` stops one enemy hit, `acid` 3 flasks (Q pours a puddle that dissolves enemies for 4 s) | `item`: `acid`, `shotgun` or `armor` |
+| `wallet` | Dropped wallet: +5 coins | |
+| `hint` | Sign whose text pops up in a bubble while the player is near | `text` |
 
 ## Old colour masks
 
@@ -116,7 +127,7 @@ pixel is one 32x32 tile. When `<level>.json` exists the mask is ignored;
 without a JSON file the mask still loads. Convert one for good with:
 
 ```
-python level_format.py import levels/0_mask.png levels/0.json
+python level_format.py import levels/2_mask.png levels/2.json
 ```
 
 | Mask colour | Meaning |

@@ -280,10 +280,91 @@ def goal(frame):
     return c.image()
 
 
+def chest(opened):
+    """Treasure chest: wooden box, iron bands, brass lock."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    c.flat(K.box(4, 18, 27, 29).mask, "wood", "body")
+    if opened:
+        c.flat(K.box(5, 7, 26, 12).mask, "wood", "lid")
+        c.flat(K.box(6, 13, 25, 17).mask, "shell", "inside", base=0)
+    else:
+        lid = K.ellipse(15.5, 18, 12, 7).where(K.YY < 18)
+        c.draw(lid, "wood", "lid")
+    for x in (8, 23):
+        c.flat(K.box(x, 12 if not opened else 7, x + 1, 29).mask & c.alpha, "metal", f"band{x}")
+    if not opened:
+        c.draw(K.ellipse(15.5, 19.5, 2.4, 2.6), "brass", "lock")
+        c.px(RAMPS["hair"][0], (15, 20), (15, 21))
+    return c.image()
+
+
+def wallet():
+    """Leather wallet with a banknote sticking out."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    c.flat(K.box(12, 15, 21, 20).mask, "leaf", "note", base=3)
+    c.px(RAMPS["leaf"][1], (15, 17), (16, 17), (17, 17))
+    c.draw(K.ellipse(15.5, 23.5, 8.5, 6).where((K.YY > 18.5) & (K.YY < 29)), "belt", "wallet")
+    c.px(RAMPS["belt"][0], *[(x, 22) for x in range(9, 23)])
+    c.draw(K.ellipse(15.5, 25, 1.4, 1.4), "brass", "clasp")
+    return c.image()
+
+
 OBJECTS = {
     "checkpoint": [checkpoint(False), checkpoint(True)],
     "goal": [goal(0), goal(1)],
+    "chest": [chest(False), chest(True)],
+    "wallet": [wallet()],
 }
+
+
+# --------------------------------------------------------------------------
+# Terrain tiles (tiles/<name>.png, 32x32, repeat without seams)
+# --------------------------------------------------------------------------
+
+def cloud_tile():
+    """Cloud platform: puffy top that repeats every 32 px, flat shaded underside."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    body = K.box(0, 6, 31, 25)
+    for cx in (0, 16, 32):
+        body = body | K.ellipse(cx, 8, 9, 7.5)
+    body = body | K.ellipse(8, 25, 9, 4.5) | K.ellipse(24, 25, 9, 4.5)
+    c.draw(body.where((K.YY > 1) & (K.YY < 30)), "cloud", "cloud", thresh=(0.05, 0.30, 0.70))
+    return c.image(outline=(150, 182, 224))
+
+
+# shades of the old flat placeholder colour (175, 75, 50); the darkest is the mortar
+BRICK = [(86, 36, 30), (138, 58, 42), (175, 75, 50), (204, 112, 80)]
+
+
+def brick_tile():
+    """Brick wall in running bond: four courses, joints shifted every other course.
+
+    Drawn pixel by pixel so it repeats without seams in both directions.
+    """
+    img = Image.new("RGBA", (32, 32), BRICK[0])
+    px = img.load()
+    for course in range(4):
+        top = course * 8
+        for start in ((0, 16) if course % 2 == 0 else (8, 24)):
+            for i in range(15):
+                x = (start + 1 + i) % 32
+                for y in range(top + 1, top + 8):
+                    if y == top + 1 or i == 0:
+                        px[x, y] = BRICK[3]
+                    elif y == top + 7 or i == 14:
+                        px[x, y] = BRICK[1]
+                    else:
+                        px[x, y] = BRICK[2]
+    for x, y in ((5, 4), (21, 3), (12, 13), (28, 12), (4, 21), (19, 20), (10, 29), (26, 28)):
+        px[x, y] = BRICK[1]
+    return img
+
+
+# file name in tiles/ -> image
+TILES = {"4": cloud_tile(), "brick": brick_tile()}
 
 
 # --------------------------------------------------------------------------
@@ -336,6 +417,8 @@ if __name__ == "__main__":
         img.save(decor_dir / f"{name}.png")
     for name, frames in OBJECTS.items():
         save_frames(ROOT / "objects" / name, frames)
+    for name, img in TILES.items():
+        img.save(ROOT / "tiles" / f"{name}.png")
     preview().save(OUT / "props_preview.png")
     print("enemies:", sum(len(f) for f in ENEMIES.values()), "frames; decor:", len(DECOR),
           "; objects:", sum(len(f) for f in OBJECTS.values()), "frames")

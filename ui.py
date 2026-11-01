@@ -7,7 +7,7 @@ from settings import *
 class FloatingText(pygame.sprite.Sprite):
     """Short-lived floating text for pickups, scores, and notifications."""
 
-    def __init__(self, text, pos, color=(255, 255, 255), font=None):
+    def __init__(self, text, pos, color=(255, 255, 255), font=None, duration=45):
         super().__init__(G.all_sprites_group)
         if font is None:
             font = getattr(G, "small_font", None)
@@ -23,7 +23,7 @@ class FloatingText(pygame.sprite.Sprite):
         self.image = surf
         self.rect = self.image.get_rect(center=pos)
         self.y = float(self.rect.centery)
-        self.timer = 45
+        self.timer = duration  # game ticks; longer for texts worth reading
 
     def update(self):
         self.timer -= 1
@@ -36,13 +36,15 @@ class FloatingText(pygame.sprite.Sprite):
             self.kill()
 
 
-def spawn_floating_text(text, pos, color=(255, 255, 255)):
-    return FloatingText(text, pos, color)
+def spawn_floating_text(text, pos, color=(255, 255, 255), duration=45):
+    return FloatingText(text, pos, color, duration=duration)
 
 
 G.create_floating_text = spawn_floating_text
 
 
+# Turkish texts use sentence case: the pixel font draws Ç Ğ İ Ö Ş Ü as small letters,
+# so all-caps words such as BÖLÜM would look broken.
 class UI:
     def __init__(self, font):
         self.current_health = 100
@@ -74,7 +76,7 @@ class UI:
             pygame.draw.rect(G.screen, fill_color, (bar_x, bar_y, fill_w, bar_height), border_radius=2)
 
         # HP Text label
-        hp_label = self.small_font.render(f"HP {int(self.current_health)}/{self.maximum_health}", True, WHITE)
+        hp_label = self.small_font.render(f"Can {int(self.current_health)}/{self.maximum_health}", True, WHITE)
         G.screen.blit(hp_label, (bar_x + bar_width + 10, bar_y + 2))
 
     def display_ammo(self):
@@ -85,14 +87,28 @@ class UI:
             # Pulsing reload text
             ticks = pygame.time.get_ticks()
             color = (255, 220, 50) if (ticks // 250) % 2 == 0 else (200, 160, 20)
-            text = self.small_font.render("RELOADING...", True, color)
+            text = self.small_font.render("Dolduruluyor...", True, color)
         else:
             color = WHITE if G.player.current_ammo > 5 else (231, 76, 60)
-            text = self.small_font.render(f"AMMO {G.player.current_ammo} / {G.player.total_ammo}", True, color)
+            text = self.small_font.render(f"Mermi {G.player.current_ammo} / {G.player.total_ammo}", True, color)
         G.screen.blit(text, (24, ammo_y))
 
+    def display_items(self):
+        """Armor and acid next to the ammo line, only while the player has some."""
+        if G.player is None:
+            return
+        x = 24
+        for count, text, color in ((G.player.armor, "Zırh x{}", (200, 225, 255)),
+                                   (G.player.acid, "Asit x{} [Q]", (150, 255, 90))):
+            if count > 0:
+                label = text.format(count)
+                G.screen.blit(self.small_font.render(label, True, (20, 24, 32)), (x + 1, 67))
+                surface = self.small_font.render(label, True, color)
+                G.screen.blit(surface, (x, 66))
+                x += surface.get_width() + 18
+
     def display_score(self):
-        score_text = self.font.render(f"SCORE {game_stats['score']}", True, WHITE)
+        score_text = self.font.render(f"Skor {game_stats['score']}", True, WHITE)
         score_rect = score_text.get_rect(center=(WIDTH // 2, 28))
         G.screen.blit(score_text, score_rect)
 
@@ -110,13 +126,16 @@ class UI:
         G.screen.blit(coin_text, (WIDTH - 90, 18))
 
     def display_level(self):
-        level_text = self.font.render(f"LEVEL {game_stats['current_level'] + 1}", True, WHITE)
+        level = game_stats["current_level"]
+        label = "Eğitim" if level == 0 else f"Bölüm {level}"  # level 0 is the tutorial
+        level_text = self.font.render(label, True, WHITE)
         level_rect = level_text.get_rect(topright=(WIDTH - 160, 18))
         G.screen.blit(level_text, level_rect)
 
     def update(self):
         self.display_health()
         self.display_ammo()
+        self.display_items()
         self.display_score()
         self.display_level()
         self.display_coin()

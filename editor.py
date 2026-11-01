@@ -19,7 +19,8 @@ Keys
   arrows          move the view
   Alt+click / I   pick what is under the cursor
   F               turn the enemy under the cursor around
-  + / -           change the pair number of the tunnel under the cursor
+  + / -           change the tunnel pair or the chest item under the cursor
+  T               write the text of the hint sign under the cursor (Enter saves)
   Ctrl+Z / Ctrl+Y undo / redo
   Ctrl+arrows     resize: columns at the right edge, rows at the top
                   hold Shift for 10 tiles (also works on the +/- buttons)
@@ -58,8 +59,10 @@ TABS = (("terrain", "Zemin"), ("decor", "Dekor"), ("entity", "Nesne"))
 ENTITY_LABELS = {
     "player": "Oyuncu", "walker": "Kaz", "turtle": "Tosbağa", "health": "Can",
     "coin": "Altın", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
+    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu",
 }
-TERRAIN_LABELS = {0: "Görünmez", 1: "Zemin", 2: "Toprak", 3: "Tuğla"}
+ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Zırh"}
+TERRAIN_LABELS = {0: "Görünmez", 1: "Zemin", 2: "Toprak", 3: "Tuğla", 4: "Bulut"}
 # entities that can be painted by dragging; the rest go down one per click
 DRAG_ENTITIES = {"coin"}
 
@@ -90,6 +93,9 @@ class Art:
             "tunnel": (None, "center"),
             "checkpoint": (load_image("objects/checkpoint/1.png"), "bottomleft"),
             "goal": (load_image("objects/goal/0.png"), "bottomleft"),
+            "chest": (load_image("objects/chest/0.png"), "midbottom"),
+            "wallet": (load_image("objects/wallet/0.png"), "midbottom"),
+            "hint": (load_image("decor/sign.png"), "midbottom"),
         }
         self.invisible = pygame.Surface((TILESIZE, TILESIZE), pygame.SRCALPHA)
         self.invisible.fill((255, 0, 255, 70))
@@ -148,6 +154,8 @@ class Editor:
         self.rect_start = None     # first cell of a rectangle drag
         self.last_cell = None
         self.hits = []             # (screen rect, action) for panel buttons, rebuilt each draw
+        self.text_edit = None      # hint entity whose text is being typed
+        self.text_buffer = ""
         self.load(level_num)
 
     def load(self, level_num):
@@ -323,6 +331,8 @@ class Editor:
             entity["dir"] = old["dir"]
         entities.append(entity)
         self.dirty = True
+        if kind == "hint":
+            self.start_text_edit(entity)
 
     def free_tunnel_pair(self):
         """Join a tunnel that has no partner yet, otherwise start a new pair."""
@@ -372,11 +382,47 @@ class Editor:
         if entity is not None and "dir" in entity:
             self.change(lambda: entity.__setitem__("dir", -entity["dir"]))
 
-    def change_pair(self, cell, delta):
+    def change_value(self, cell, delta):
+        """+/-: renumber a tunnel's pair or step through a chest's item."""
         entity = self.entity_under(cell) if cell else None
-        if entity is not None and entity["type"] == "tunnel":
+        if entity is None:
+            return
+        if entity["type"] == "tunnel":
             self.change(lambda: entity.__setitem__("pair", max(1, entity["pair"] + delta)))
             self.message = f"Tünel eşi: {entity['pair']}"
+        elif entity["type"] == "chest":
+            items = level_format.CHEST_ITEMS
+            current = items.index(entity["item"]) if entity.get("item") in items else -1
+            index = (current + delta) % len(items)
+            self.change(lambda: entity.__setitem__("item", items[index]))
+            self.message = f"Sandık: {ITEM_LABELS[entity['item']]}"
+
+    def start_text_edit(self, entity):
+        self.text_edit = entity
+        self.text_buffer = entity.get("text", "")
+        pygame.key.start_text_input()
+        self.message = "İpucu yazısını yaz; Enter kaydeder, Esc vazgeçer"
+
+    def handle_text_event(self, event):
+        """Keys while a hint's text is being typed; returns True when the event was used."""
+        if event.type == pygame.TEXTINPUT:
+            self.text_buffer += event.text
+            return True
+        if event.type != pygame.KEYDOWN:
+            return False
+        if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            entity, text = self.text_edit, self.text_buffer.strip()
+            self.change(lambda: entity.__setitem__("text", text))
+            self.message = f"İpucu: {text}"
+            self.text_edit = None
+        elif event.key == pygame.K_ESCAPE:
+            self.text_edit = None
+            self.message = "İpucu yazısı değişmedi"
+        elif event.key == pygame.K_BACKSPACE:
+            self.text_buffer = self.text_buffer[:-1]
+        if self.text_edit is None:
+            pygame.key.stop_text_input()
+        return True
 
     def resize(self, d_width, d_height):
         """Columns come and go at the right edge, rows at the top, so the ground stays put."""
@@ -423,6 +469,8 @@ class Editor:
     # --- input --------------------------------------------------------------
 
     def handle_event(self, event):
+        if self.text_edit is not None and self.handle_text_event(event):
+            return
         if event.type == pygame.QUIT:
             self.request_quit()
         elif event.type == pygame.KEYDOWN:
@@ -477,9 +525,13 @@ class Editor:
         elif event.key == pygame.K_f:
             self.flip_enemy(cell)
         elif event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
-            self.change_pair(cell, 1)
+            self.change_value(cell, 1)
         elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
-            self.change_pair(cell, -1)
+            self.change_value(cell, -1)
+        elif event.key == pygame.K_t:
+            entity = self.entity_under(cell) if cell else None
+            if entity is not None and entity["type"] == "hint":
+                self.start_text_edit(entity)
         elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
             self.tab = TABS[event.key - pygame.K_1][0]
         elif event.key == pygame.K_b:
@@ -574,8 +626,17 @@ class Editor:
         if self.show_grid:
             self.draw_grid(world)
         self.draw_cursor()
+        if self.text_edit is not None:
+            self.draw_text_box()
         self.screen.set_clip(None)
         self.draw_panel()
+
+    def draw_text_box(self):
+        box = pygame.Rect(12, SCREEN_H - 52, VIEW_W - 24, 40)
+        pygame.draw.rect(self.screen, UI_BG, box, border_radius=4)
+        pygame.draw.rect(self.screen, UI_ACCENT, box, 2, border_radius=4)
+        self.text("İpucu yazısı (Enter: kaydet, Esc: vazgeç)", (box.x + 10, box.y + 6), UI_DIM)
+        self.text(self.text_buffer + "_", (box.x + 10, box.y + 22), UI_TEXT)
 
     def visible_cells(self):
         x0 = max(0, int(self.offset.x // TILESIZE))
@@ -617,6 +678,18 @@ class Editor:
             elif image is not None:
                 flip = entity.get("dir", 1) < 0
                 self.screen.blit(self.art.scaled(("entity", entity["type"]), image, self.zoom, flip), rect)
+            if entity["type"] == "chest":
+                item = entity.get("item", "?")
+                self.draw_tag(ITEM_LABELS.get(item, item), rect.midtop)
+            elif entity["type"] == "hint" and self.zoom >= 1:
+                text = entity.get("text") or "(boş ipucu)"
+                self.draw_tag(text if len(text) <= 32 else text[:31] + "…", rect.midtop)
+
+    def draw_tag(self, text, midbottom):
+        label = self.font.render(text, True, UI_TEXT)
+        box = label.get_rect(midbottom=(midbottom[0], midbottom[1] - 4)).inflate(8, 6)
+        pygame.draw.rect(self.screen, UI_BG, box, border_radius=3)
+        self.screen.blit(label, label.get_rect(center=box.center))
 
     def draw_tunnel(self, rect, pair):
         hue = (pair * 67) % 360
@@ -730,13 +803,14 @@ class Editor:
                         lambda key=key: setattr(self, "tab", key))
 
         y += 32
-        cell = 60
+        # four columns, so all eleven object types fit above the tool buttons
+        cell = 50
         for i, (key, label, image) in enumerate(self.palette_items()):
-            rect = pygame.Rect(x + (i % 3) * 82, y + (i // 3) * (cell + 16), cell, cell)
+            rect = pygame.Rect(x + (i % 4) * 60, y + (i // 4) * (cell + 16), cell, cell)
             selected = self.selected[self.tab] == key
             pygame.draw.rect(self.screen, UI_BOX, rect, border_radius=3)
             if image is not None:
-                fit = min((cell - 8) / image.get_width(), (cell - 8) / image.get_height())
+                fit = min((cell - 4) / image.get_width(), (cell - 4) / image.get_height())
                 fit = math.floor(fit) if fit >= 1 else fit
                 thumb = self.art.scaled(("thumb", self.tab, key), image, fit)
                 self.screen.blit(thumb, thumb.get_rect(center=rect.center))
@@ -744,7 +818,7 @@ class Editor:
                 self.draw_tunnel(rect.inflate(-14, -14), 1)
             if selected:
                 pygame.draw.rect(self.screen, UI_ACCENT, rect, 2, border_radius=3)
-            name = self.font.render(label[:9], True, UI_TEXT if selected else UI_DIM)
+            name = self.font.render(label[:8], True, UI_TEXT if selected else UI_DIM)
             self.screen.blit(name, name.get_rect(midtop=(rect.centerx, rect.bottom + 3)))
             self.hits.append((rect, lambda key=key: self.selected.__setitem__(self.tab, key)))
 
@@ -760,20 +834,21 @@ class Editor:
         self.button(pygame.Rect(x + 124, y + 58, 118, 22), "L Ön", self.decor_layer == "front",
                     lambda: setattr(self, "decor_layer", "front"))
 
-        y = 530
+        y = 538
         cell_pos = self.to_cell(pygame.mouse.get_pos())
         where = f"{cell_pos[0]}, {cell_pos[1]}" if cell_pos else "-"
         self.text(f"Hücre: {where}   Zoom: {self.zoom}x", (x, y), UI_DIM)
-        for i, line in enumerate(self.wrap(self.message, 30)[:4]):
+        for i, line in enumerate(self.wrap(self.message, 30)[:3]):
             self.text(line, (x, y + 16 + i * 12), UI_TEXT)
 
         help_lines = ["Sol: boya   Sağ: sil", "Orta/Space: kaydır",
                       "Teker: zoom  G: ızgara", "Alt+tık / I: seç",
-                      "F: yön  +/-: tünel eşi", "Ctrl+Z/Y: geri al/yinele",
+                      "F: yön  +/-: tünel, sandık", "T: ipucu yazısı",
+                      "Ctrl+Z/Y: geri al/yinele",
                       "Ctrl+oklar: boyut", "PgUp/Dn: bölüm / yeni",
                       "Ctrl+S: kaydet  Esc: çık"]
         for i, line in enumerate(help_lines):
-            self.text(line, (x, SCREEN_H - 114 + i * 12), UI_DIM)
+            self.text(line, (x, SCREEN_H - 126 + i * 12), UI_DIM)
 
     @staticmethod
     def wrap(message, width):

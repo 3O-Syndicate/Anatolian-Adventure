@@ -5,6 +5,7 @@ from item import Item
 from enemy import WalkingEnemy, TurtleEnemy
 from settings import WIDTH, HEIGHT, TILESIZE, import_folder
 from terrain import TileTextures
+from ui import FloatingText
 import level_format
 import globals as G
 
@@ -17,7 +18,7 @@ class Tile(pygame.sprite.Sprite):
 
 
 class LevelObject(pygame.sprite.Sprite):
-    """Checkpoint or goal artwork standing in its tile."""
+    """Checkpoint, goal, chest or wallet artwork standing in its tile."""
     FRAME_TICKS = 20
 
     def __init__(self, frames, cell, kind="goal"):
@@ -34,11 +35,47 @@ class LevelObject(pygame.sprite.Sprite):
         if self.kind == "goal":
             self.ticks += 1
             self.image = self.frames[(self.ticks // self.FRAME_TICKS) % len(self.frames)]
-        elif self.kind == "checkpoint":
+        elif self.kind in ("checkpoint", "chest"):  # lit flag, open chest
             if self.activated and len(self.frames) > 1:
                 self.image = self.frames[1]
             else:
                 self.image = self.frames[0]
+
+
+class HintSign(pygame.sprite.Sprite):
+    """A sign whose tip pops up in a bubble while the player is close.
+
+    The bubble floats above head height and is drawn after every sprite
+    (GameLevel.draw), so the player never covers it.
+    """
+    REACH = (TILESIZE * 4, TILESIZE * 3)
+    BUBBLE_LIFT = TILESIZE * 5 // 2
+
+    def __init__(self, sign, text, cell, font):
+        super().__init__(G.all_sprites_group)
+        x, y = cell
+        self.anchor = (x * TILESIZE + TILESIZE // 2, (y + 1) * TILESIZE)
+        self.image = sign
+        self.rect = sign.get_rect(midbottom=self.anchor)
+        self.bubble = self.make_bubble(text, font) if text else None
+        self.bubble_rect = (self.bubble.get_rect(midbottom=(self.anchor[0], self.anchor[1] - self.BUBBLE_LIFT))
+                            if self.bubble else None)
+        self.near = False
+
+    @staticmethod
+    def make_bubble(text, font):
+        label = font.render(text, True, (255, 255, 255))
+        bubble = pygame.Surface((label.get_width() + 20, label.get_height() + 14), pygame.SRCALPHA)
+        pygame.draw.rect(bubble, (20, 24, 36, 225), bubble.get_rect(), border_radius=6)
+        bubble.blit(label, (10, 7))
+        return bubble
+
+    def update(self):
+        player = G.player
+        # wait for the cage to break, so the cage prompt is the only instruction at the start
+        self.near = (player is not None and not player.is_caged
+                     and abs(player.base_player_rect.centerx - self.anchor[0]) < self.REACH[0]
+                     and abs(player.base_player_rect.bottom - self.anchor[1]) < self.REACH[1])
 
 
 class GameLevel:
@@ -53,10 +90,14 @@ class GameLevel:
         self.player_spawn = (0, 0)
         self.checkpoints = []
         self.goal = None
+        self.last_checkpoint = None  # the player respawns here after dying
+        self.chests = []
+        self.wallets = []
         self.level_completed = False
         self.level_clear_timer = 0
         self.tunnels = {}
         self.decor_images = {}
+        self.hint_signs = []
         self.prepare(level_num)
 
     def prepare(self, level_num):
@@ -88,7 +129,8 @@ class GameLevel:
 
     def spawn_entities(self, level, level_num):
         objects = {name: import_folder(f"objects/{name}") if os.path.isdir(f"objects/{name}")
-                   else [] for name in ("checkpoint", "goal")}
+                   else [] for name in ("checkpoint", "goal", "chest", "wallet")}
+        hint_font = pygame.font.Font("font/PublicPixel.ttf", 10)
         tunnel_cells = {}
         for entity in level["entities"]:
             kind = entity["type"]
@@ -109,13 +151,21 @@ class GameLevel:
             elif kind == "turtle":
                 self.turtle_spawn_pos.append(pos)
                 TurtleEnemy(pos, entity.get("dir", -1))
-            elif kind in ("checkpoint", "goal"):
+            elif kind in ("checkpoint", "goal", "chest", "wallet"):
                 frames = objects[kind] or [self.placeholder((TILESIZE, 2 * TILESIZE))]
                 obj = LevelObject(frames, (x, y), kind=kind)
                 if kind == "checkpoint":
                     self.checkpoints.append(obj)
                 elif kind == "goal":
                     self.goal = obj
+                elif kind == "chest":
+                    obj.item = entity.get("item", "shotgun")
+                    self.chests.append(obj)
+                else:
+                    self.wallets.append(obj)
+            elif kind == "hint":
+                sign = self.decor_image("sign") or self.placeholder((TILESIZE, TILESIZE))
+                self.hint_signs.append(HintSign(sign, entity.get("text", ""), (x, y), hint_font))
             elif kind == "tunnel":
                 tunnel_cells.setdefault(entity["pair"], []).append(
                     pygame.Rect(pos, (TILESIZE, TILESIZE)))
@@ -187,9 +237,13 @@ class GameLevel:
                     and target.left < tile.rect.right and target.right > tile.rect.left
                     for tile in G.obstacles_group
                 )
-                self.offset.update(pygame.Vector2(target.center) - (WIDTH // 2, HEIGHT // 2))
+                self.snap_camera()
                 return True
         return False
+
+    def snap_camera(self):
+        """Centre the view on the player at once (after a teleport or respawn)."""
+        self.offset.update(pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2))
 
     def update_camera(self):
         target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)
@@ -210,7 +264,17 @@ class GameLevel:
         if self.decor_back is not None:
             G.screen.blit(self.decor_back, -draw_offset)
         G.screen.blit(self.floor, -draw_offset)
+        texts = []
         for sprite in G.all_sprites_group:
-            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
+            if isinstance(sprite, FloatingText):
+                texts.append(sprite)
+            else:
+                G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
         if self.decor_front is not None:
             G.screen.blit(self.decor_front, -draw_offset)
+        for sign in self.hint_signs:
+            if sign.near and sign.bubble is not None:
+                G.screen.blit(sign.bubble, pygame.Vector2(sign.bubble_rect.topleft) - draw_offset)
+        # score and pickup texts go over everything, hint bubbles included
+        for text in texts:
+            G.screen.blit(text.image, pygame.Vector2(text.rect.topleft) - draw_offset)

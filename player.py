@@ -12,6 +12,7 @@ import globals as G
 import assets
 from settings import *
 from bullet import Bullet
+from acid import AcidPuddle
 
 
 class MuzzleFlash(pygame.sprite.Sprite):
@@ -75,6 +76,8 @@ class Player(pygame.sprite.Sprite):
         self.coyote_timer = 0
         self.jump_buffer_timer = 0
         self.fell_in_pit = False
+        self.down_was_pressed = False  # S held while the game starts must not crash the tunnel check
+        self.tunnel_requested = False
         self.direction = 1 # 0 = left, 1 = right
         self.is_ducking = False
 
@@ -85,6 +88,7 @@ class Player(pygame.sprite.Sprite):
         self.death_timer = 0
         self.death_finished = False
         self.flash = None
+        self.invulnerable_timer = 0  # after a respawn, enemies cannot hurt the player
 
         # --- WEAPON & AMMO SYSTEM ---
         self.is_shooting = False
@@ -100,6 +104,9 @@ class Player(pygame.sprite.Sprite):
         self.reload_duration = 1500
 
         self.health = 100
+        self.armor = 0             # each armor point stops one enemy hit
+        self.acid = 0              # acid flasks, poured with Q
+        self.acid_was_pressed = False
         self.is_caged = False
         self.cage = None
 
@@ -277,6 +284,12 @@ class Player(pygame.sprite.Sprite):
             if self.velocity_x>0: self.velocity_x -= 1
             else: self.velocity_x += 1
 
+        # Pour acid on the floor in front (Q)
+        acid_pressed = keys[pygame.K_q]
+        if acid_pressed and not self.acid_was_pressed:
+            self.pour_acid()
+        self.acid_was_pressed = acid_pressed
+
         # Reload Action
         if keys[pygame.K_r] and self.current_ammo < self.max_ammo and self.total_ammo > 0 and not self.is_reloading:
             self.start_reload()
@@ -290,6 +303,50 @@ class Player(pygame.sprite.Sprite):
         # Auto-Reload Logic
         if (pygame.mouse.get_pressed() == (1, 0, 0) or keys[pygame.K_SPACE]) and self.current_ammo <= 0 and self.total_ammo > 0 and not self.is_reloading:
             self.start_reload()
+
+    def pour_acid(self):
+        """Q: a puddle on the floor one tile ahead dissolves enemies for a few seconds."""
+        if self.acid <= 0 or not self.on_ground:
+            return
+        self.acid -= 1
+        front = self.base_player_rect.centerx + (TILESIZE if self.direction == 1 else -TILESIZE)
+        AcidPuddle((front, self.base_player_rect.bottom))
+
+    def take_item(self, item, where):
+        """Chest contents: shotgun ammo, armor against one hit, or acid flasks."""
+        if item == "shotgun":
+            self.total_ammo += 30
+            text = "Tüfek: +30 mermi"
+        elif item == "armor":
+            self.armor += 1
+            text = "Zırh: bir darbeyi durdurur"
+        elif item == "acid":
+            self.acid += 3
+            text = "Asit x3: Q ile yere dök"
+        else:
+            return
+        if G.health_potion_sound:
+            G.health_potion_sound.play()
+        if getattr(G, "create_floating_text", None):
+            G.create_floating_text(text, where, (255, 235, 140), duration=150)
+
+    def lose_armor(self, enemy):
+        """Armor takes the hit: knocked back, then a short grace period."""
+        self.armor -= 1
+        self.invulnerable_timer = 90
+        self.hurt_timer = 18
+        away = 1 if self.base_player_rect.centerx >= enemy.rect.centerx else -1
+        self.velocity_x = 8 * away
+        self.velocity_y = -8
+        self.on_ground = False
+        if G.hurt_sound:
+            G.hurt_sound.play()
+        if G.game_level:
+            G.game_level.shake_timer = 10
+            G.game_level.shake_amount = 4
+        if getattr(G, "create_floating_text", None):
+            G.create_floating_text("Zırh kırıldı!", (self.base_player_rect.centerx, self.rect.top - 8),
+                                   (160, 200, 255), duration=90)
 
     def start_reload(self):
         self.is_reloading = True
@@ -433,6 +490,11 @@ class Player(pygame.sprite.Sprite):
                 self.velocity_y = -15
                 self.on_ground = False
             elif self.base_player_rect.colliderect(enemy.rect) and enemy.on_player_contact(self):
+                if self.invulnerable_timer > 0:
+                    continue
+                if self.armor > 0:
+                    self.lose_armor(enemy)
+                    continue
                 self.get_damage(self.health)
                 break
 
@@ -444,10 +506,28 @@ class Player(pygame.sprite.Sprite):
             if not cp.activated and self.base_player_rect.colliderect(cp.rect):
                 cp.activated = True
                 G.game_level.player_spawn = (cp.rect.centerx, cp.rect.bottom)
+                G.game_level.last_checkpoint = cp
                 from settings import game_stats
                 game_stats["score"] += 200
                 if getattr(G, "create_floating_text", None):
-                    G.create_floating_text("CHECKPOINT!", (cp.rect.centerx, cp.rect.top - 12), (100, 255, 150))
+                    G.create_floating_text("Kontrol noktası!", (cp.rect.centerx, cp.rect.top - 12), (100, 255, 150))
+
+        # Chests open once; wallets are picked up
+        for chest in getattr(G.game_level, "chests", []):
+            if not chest.activated and self.base_player_rect.colliderect(chest.rect):
+                chest.activated = True
+                self.take_item(chest.item, (chest.rect.centerx, chest.rect.top - 12))
+        for wallet in getattr(G.game_level, "wallets", []):
+            if wallet.alive() and self.base_player_rect.colliderect(wallet.rect):
+                wallet.kill()
+                from settings import game_stats
+                game_stats["coins"] += 5
+                game_stats["score"] += 50
+                if G.coin_sound:
+                    G.coin_sound.play()
+                if getattr(G, "create_floating_text", None):
+                    G.create_floating_text("Cüzdan: +5 altın", (wallet.rect.centerx, wallet.rect.top - 12),
+                                           (255, 223, 91), duration=90)
 
         # Goal
         goal = getattr(G.game_level, "goal", None)
@@ -457,10 +537,33 @@ class Player(pygame.sprite.Sprite):
                 from settings import game_stats
                 game_stats["score"] += 1000
                 if getattr(G, "create_floating_text", None):
-                    G.create_floating_text("STAGE CLEAR! +1000", (goal.rect.centerx, goal.rect.top - 16), (255, 215, 0))
+                    G.create_floating_text("Bölüm sonu! +1000", (goal.rect.centerx, goal.rect.top - 16), (255, 215, 0))
                 if G.game_level:
                     G.game_level.shake_timer = 12
                     G.game_level.shake_amount = 4
+
+    def respawn(self, feet):
+        """Stand up again at a checkpoint: full health, same ammo, a short grace period.
+
+        The world keeps its state (defeated enemies stay defeated, collected
+        coins stay collected), so dying costs only the way back.
+        """
+        self.base_player_rect = pygame.Rect((0, 0), self.stand_size)
+        self.base_player_rect.midbottom = feet
+        self.previous_rect = self.base_player_rect.copy()
+        self.vec_pos.update(self.base_player_rect.center)
+        self.velocity_x = self.velocity_y = 0
+        self.on_ground = True
+        self.is_ducking = False
+        self.fell_in_pit = False
+        self.death_timer = 0
+        self.death_finished = False
+        self.hurt_timer = self.shot_timer = self.land_timer = 0
+        self.health = 100
+        if G.ui is not None:
+            G.ui.current_health = G.ui.maximum_health
+        self.invulnerable_timer = 120
+        self.animate(restart=True)
 
     def update_death(self):
         """Mario-style death: freeze in the death pose, pop up, then fall off screen."""
@@ -502,5 +605,10 @@ class Player(pygame.sprite.Sprite):
         if self.shoot_cooldown > 0: self.shoot_cooldown -= 1
         fired = self.shoot()
         self.animate(restart=fired and self.anim_name in ("shoot", "duck_shoot"))
+        if self.invulnerable_timer > 0:
+            self.invulnerable_timer -= 1
+            if (self.invulnerable_timer // 4) % 2:  # blink while enemies cannot hurt
+                self.image = self.image.copy()
+                self.image.set_alpha(90)
         if fired:
             self.fire_from_muzzle()
