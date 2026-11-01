@@ -6,11 +6,17 @@ Each level is `levels/<n>.json`. Edit them with the map editor:
 python editor.py 1
 ```
 
-`levels/0.json` is the old test map converted from `0_mask.png`.
-`levels/1.json` is a sample level that shows every feature (decor on both
-layers, coins, a tunnel pair, enemies facing both ways, checkpoint, goal);
-rework or replace it freely. Play a level directly with
-`python main.py --level 1`, or press F5 in the editor.
+The game starts at level 0 and moves to the next number when the goal flag
+is touched.
+
+| File | Level |
+| --- | --- |
+| `levels/0.json` | Tutorial: Turkish hint signs teach moving, jumping, shooting, tunnels, the checkpoint, chests and acid; the side cave under the pipe holds the acid and shotgun chests |
+| `levels/1.json` | Sample level that shows every feature (decor on both layers, coins, a tunnel pair, enemies facing both ways, checkpoint, goal); rework or replace it freely |
+| `levels/2.json` | Oğuzhan's test map with the teleport tunnels, converted from `2_mask.png`; it has no goal yet, so it stays last |
+
+Play a level directly with `python main.py --level 1`, or press F5 in the
+editor.
 
 ## Map editor
 
@@ -121,7 +127,7 @@ pixel is one 32x32 tile. When `<level>.json` exists the mask is ignored;
 without a JSON file the mask still loads. Convert one for good with:
 
 ```
-python level_format.py import levels/0_mask.png levels/0.json
+python level_format.py import levels/2_mask.png levels/2.json
 ```
 
 | Mask colour | Meaning |

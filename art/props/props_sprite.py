@@ -320,7 +320,7 @@ OBJECTS = {
 
 
 # --------------------------------------------------------------------------
-# Terrain tiles (tiles/<id>.png, 32x32, repeat sideways)
+# Terrain tiles (tiles/<name>.png, 32x32, repeat without seams)
 # --------------------------------------------------------------------------
 
 def cloud_tile():
@@ -335,7 +335,36 @@ def cloud_tile():
     return c.image(outline=(150, 182, 224))
 
 
-TILES = {4: cloud_tile()}
+# shades of the old flat placeholder colour (175, 75, 50); the darkest is the mortar
+BRICK = [(86, 36, 30), (138, 58, 42), (175, 75, 50), (204, 112, 80)]
+
+
+def brick_tile():
+    """Brick wall in running bond: four courses, joints shifted every other course.
+
+    Drawn pixel by pixel so it repeats without seams in both directions.
+    """
+    img = Image.new("RGBA", (32, 32), BRICK[0])
+    px = img.load()
+    for course in range(4):
+        top = course * 8
+        for start in ((0, 16) if course % 2 == 0 else (8, 24)):
+            for i in range(15):
+                x = (start + 1 + i) % 32
+                for y in range(top + 1, top + 8):
+                    if y == top + 1 or i == 0:
+                        px[x, y] = BRICK[3]
+                    elif y == top + 7 or i == 14:
+                        px[x, y] = BRICK[1]
+                    else:
+                        px[x, y] = BRICK[2]
+    for x, y in ((5, 4), (21, 3), (12, 13), (28, 12), (4, 21), (19, 20), (10, 29), (26, 28)):
+        px[x, y] = BRICK[1]
+    return img
+
+
+# file name in tiles/ -> image
+TILES = {"4": cloud_tile(), "brick": brick_tile()}
 
 
 # --------------------------------------------------------------------------
@@ -388,8 +417,8 @@ if __name__ == "__main__":
         img.save(decor_dir / f"{name}.png")
     for name, frames in OBJECTS.items():
         save_frames(ROOT / "objects" / name, frames)
-    for tile_id, img in TILES.items():
-        img.save(ROOT / "tiles" / f"{tile_id}.png")
+    for name, img in TILES.items():
+        img.save(ROOT / "tiles" / f"{name}.png")
     preview().save(OUT / "props_preview.png")
     print("enemies:", sum(len(f) for f in ENEMIES.values()), "frames; decor:", len(DECOR),
           "; objects:", sum(len(f) for f in OBJECTS.values()), "frames")
