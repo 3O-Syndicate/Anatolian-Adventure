@@ -12,6 +12,7 @@ import globals as G
 import assets
 from settings import *
 from bullet import Bullet
+from acid import AcidPuddle
 
 
 class MuzzleFlash(pygame.sprite.Sprite):
@@ -103,6 +104,9 @@ class Player(pygame.sprite.Sprite):
         self.reload_duration = 1500
 
         self.health = 100
+        self.armor = 0             # each armor point stops one enemy hit
+        self.acid = 0              # acid flasks, poured with Q
+        self.acid_was_pressed = False
         self.is_caged = False
         self.cage = None
 
@@ -280,6 +284,12 @@ class Player(pygame.sprite.Sprite):
             if self.velocity_x>0: self.velocity_x -= 1
             else: self.velocity_x += 1
 
+        # Pour acid on the floor in front (Q)
+        acid_pressed = keys[pygame.K_q]
+        if acid_pressed and not self.acid_was_pressed:
+            self.pour_acid()
+        self.acid_was_pressed = acid_pressed
+
         # Reload Action
         if keys[pygame.K_r] and self.current_ammo < self.max_ammo and self.total_ammo > 0 and not self.is_reloading:
             self.start_reload()
@@ -293,6 +303,50 @@ class Player(pygame.sprite.Sprite):
         # Auto-Reload Logic
         if (pygame.mouse.get_pressed() == (1, 0, 0) or keys[pygame.K_SPACE]) and self.current_ammo <= 0 and self.total_ammo > 0 and not self.is_reloading:
             self.start_reload()
+
+    def pour_acid(self):
+        """Q: a puddle on the floor one tile ahead dissolves enemies for a few seconds."""
+        if self.acid <= 0 or not self.on_ground:
+            return
+        self.acid -= 1
+        front = self.base_player_rect.centerx + (TILESIZE if self.direction == 1 else -TILESIZE)
+        AcidPuddle((front, self.base_player_rect.bottom))
+
+    def take_item(self, item, where):
+        """Chest contents: shotgun ammo, armor against one hit, or acid flasks."""
+        if item == "shotgun":
+            self.total_ammo += 30
+            text = "TÜFEK: +30 MERMİ"
+        elif item == "armor":
+            self.armor += 1
+            text = "ZIRH: BİR DARBEYİ DURDURUR"
+        elif item == "acid":
+            self.acid += 3
+            text = "ASİT x3: Q İLE YERE DÖK"
+        else:
+            return
+        if G.health_potion_sound:
+            G.health_potion_sound.play()
+        if getattr(G, "create_floating_text", None):
+            G.create_floating_text(text, where, (255, 235, 140), duration=150)
+
+    def lose_armor(self, enemy):
+        """Armor takes the hit: knocked back, then a short grace period."""
+        self.armor -= 1
+        self.invulnerable_timer = 90
+        self.hurt_timer = 18
+        away = 1 if self.base_player_rect.centerx >= enemy.rect.centerx else -1
+        self.velocity_x = 8 * away
+        self.velocity_y = -8
+        self.on_ground = False
+        if G.hurt_sound:
+            G.hurt_sound.play()
+        if G.game_level:
+            G.game_level.shake_timer = 10
+            G.game_level.shake_amount = 4
+        if getattr(G, "create_floating_text", None):
+            G.create_floating_text("ZIRH KIRILDI!", (self.base_player_rect.centerx, self.rect.top - 8),
+                                   (160, 200, 255), duration=90)
 
     def start_reload(self):
         self.is_reloading = True
@@ -438,6 +492,9 @@ class Player(pygame.sprite.Sprite):
             elif self.base_player_rect.colliderect(enemy.rect) and enemy.on_player_contact(self):
                 if self.invulnerable_timer > 0:
                     continue
+                if self.armor > 0:
+                    self.lose_armor(enemy)
+                    continue
                 self.get_damage(self.health)
                 break
 
@@ -454,6 +511,23 @@ class Player(pygame.sprite.Sprite):
                 game_stats["score"] += 200
                 if getattr(G, "create_floating_text", None):
                     G.create_floating_text("CHECKPOINT!", (cp.rect.centerx, cp.rect.top - 12), (100, 255, 150))
+
+        # Chests open once; wallets are picked up
+        for chest in getattr(G.game_level, "chests", []):
+            if not chest.activated and self.base_player_rect.colliderect(chest.rect):
+                chest.activated = True
+                self.take_item(chest.item, (chest.rect.centerx, chest.rect.top - 12))
+        for wallet in getattr(G.game_level, "wallets", []):
+            if wallet.alive() and self.base_player_rect.colliderect(wallet.rect):
+                wallet.kill()
+                from settings import game_stats
+                game_stats["coins"] += 5
+                game_stats["score"] += 50
+                if G.coin_sound:
+                    G.coin_sound.play()
+                if getattr(G, "create_floating_text", None):
+                    G.create_floating_text("CÜZDAN: +5 ALTIN", (wallet.rect.centerx, wallet.rect.top - 12),
+                                           (255, 223, 91), duration=90)
 
         # Goal
         goal = getattr(G.game_level, "goal", None)

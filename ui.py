@@ -7,7 +7,7 @@ from settings import *
 class FloatingText(pygame.sprite.Sprite):
     """Short-lived floating text for pickups, scores, and notifications."""
 
-    def __init__(self, text, pos, color=(255, 255, 255), font=None):
+    def __init__(self, text, pos, color=(255, 255, 255), font=None, duration=45):
         super().__init__(G.all_sprites_group)
         if font is None:
             font = getattr(G, "small_font", None)
@@ -23,7 +23,7 @@ class FloatingText(pygame.sprite.Sprite):
         self.image = surf
         self.rect = self.image.get_rect(center=pos)
         self.y = float(self.rect.centery)
-        self.timer = 45
+        self.timer = duration  # game ticks; longer for texts worth reading
 
     def update(self):
         self.timer -= 1
@@ -36,8 +36,8 @@ class FloatingText(pygame.sprite.Sprite):
             self.kill()
 
 
-def spawn_floating_text(text, pos, color=(255, 255, 255)):
-    return FloatingText(text, pos, color)
+def spawn_floating_text(text, pos, color=(255, 255, 255), duration=45):
+    return FloatingText(text, pos, color, duration=duration)
 
 
 G.create_floating_text = spawn_floating_text
@@ -91,6 +91,20 @@ class UI:
             text = self.small_font.render(f"AMMO {G.player.current_ammo} / {G.player.total_ammo}", True, color)
         G.screen.blit(text, (24, ammo_y))
 
+    def display_items(self):
+        """Armor and acid next to the ammo line, only while the player has some."""
+        if G.player is None:
+            return
+        x = 24
+        for count, text, color in ((G.player.armor, "ZIRH x{}", (200, 225, 255)),
+                                   (G.player.acid, "ASİT x{} [Q]", (150, 255, 90))):
+            if count > 0:
+                label = text.format(count)
+                G.screen.blit(self.small_font.render(label, True, (20, 24, 32)), (x + 1, 67))
+                surface = self.small_font.render(label, True, color)
+                G.screen.blit(surface, (x, 66))
+                x += surface.get_width() + 18
+
     def display_score(self):
         score_text = self.font.render(f"SCORE {game_stats['score']}", True, WHITE)
         score_rect = score_text.get_rect(center=(WIDTH // 2, 28))
@@ -117,6 +131,7 @@ class UI:
     def update(self):
         self.display_health()
         self.display_ammo()
+        self.display_items()
         self.display_score()
         self.display_level()
         self.display_coin()

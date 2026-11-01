@@ -108,10 +108,10 @@ is drawn behind the terrain, `front` in front of the player.
 | `health` | Health pickup | |
 | `coin` | Coin | |
 | `tunnel` | Tunnel mouth, in an empty tile right above a floor | `pair`: mouths with the same pair connect |
-| `checkpoint` | Checkpoint flag (artwork only for now) | |
-| `goal` | Goal flag (artwork only for now) | |
-| `chest` | Treasure chest | `item`: `acid`, `shotgun` or `armor` |
-| `wallet` | Dropped wallet | |
+| `checkpoint` | Checkpoint flag; after touching it the player respawns there instead of losing | |
+| `goal` | Goal flag; touching it finishes the level | |
+| `chest` | Treasure chest, opens on touch: `shotgun` +30 ammo, `armor` stops one enemy hit, `acid` 3 flasks (Q pours a puddle that dissolves enemies for 4 s) | `item`: `acid`, `shotgun` or `armor` |
+| `wallet` | Dropped wallet: +5 coins | |
 | `hint` | Sign whose text pops up in a bubble while the player is near | `text` |
 
 ## Old colour masks

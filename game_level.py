@@ -17,7 +17,7 @@ class Tile(pygame.sprite.Sprite):
 
 
 class LevelObject(pygame.sprite.Sprite):
-    """Checkpoint or goal artwork standing in its tile."""
+    """Checkpoint, goal, chest or wallet artwork standing in its tile."""
     FRAME_TICKS = 20
 
     def __init__(self, frames, cell, kind="goal"):
@@ -34,7 +34,7 @@ class LevelObject(pygame.sprite.Sprite):
         if self.kind == "goal":
             self.ticks += 1
             self.image = self.frames[(self.ticks // self.FRAME_TICKS) % len(self.frames)]
-        elif self.kind == "checkpoint":
+        elif self.kind in ("checkpoint", "chest"):  # lit flag, open chest
             if self.activated and len(self.frames) > 1:
                 self.image = self.frames[1]
             else:
@@ -89,6 +89,8 @@ class GameLevel:
         self.checkpoints = []
         self.goal = None
         self.last_checkpoint = None  # the player respawns here after dying
+        self.chests = []
+        self.wallets = []
         self.level_completed = False
         self.level_clear_timer = 0
         self.tunnels = {}
@@ -149,13 +151,16 @@ class GameLevel:
                 TurtleEnemy(pos, entity.get("dir", -1))
             elif kind in ("checkpoint", "goal", "chest", "wallet"):
                 frames = objects[kind] or [self.placeholder((TILESIZE, 2 * TILESIZE))]
-                if kind == "chest":
-                    frames = frames[:1]  # stays closed until chests can be opened
                 obj = LevelObject(frames, (x, y), kind=kind)
                 if kind == "checkpoint":
                     self.checkpoints.append(obj)
                 elif kind == "goal":
                     self.goal = obj
+                elif kind == "chest":
+                    obj.item = entity.get("item", "shotgun")
+                    self.chests.append(obj)
+                else:
+                    self.wallets.append(obj)
             elif kind == "hint":
                 sign = self.decor_image("sign") or self.placeholder((TILESIZE, TILESIZE))
                 self.hint_signs.append(HintSign(sign, entity.get("text", ""), (x, y), hint_font))
