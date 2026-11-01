@@ -5,6 +5,7 @@ from item import Item
 from enemy import WalkingEnemy, TurtleEnemy
 from settings import WIDTH, HEIGHT, TILESIZE, import_folder
 from terrain import TileTextures
+from ui import FloatingText
 import level_format
 import globals as G
 
@@ -71,7 +72,8 @@ class HintSign(pygame.sprite.Sprite):
 
     def update(self):
         player = G.player
-        self.near = (player is not None
+        # wait for the cage to break, so the cage prompt is the only instruction at the start
+        self.near = (player is not None and not player.is_caged
                      and abs(player.base_player_rect.centerx - self.anchor[0]) < self.REACH[0]
                      and abs(player.base_player_rect.bottom - self.anchor[1]) < self.REACH[1])
 
@@ -262,10 +264,17 @@ class GameLevel:
         if self.decor_back is not None:
             G.screen.blit(self.decor_back, -draw_offset)
         G.screen.blit(self.floor, -draw_offset)
+        texts = []
         for sprite in G.all_sprites_group:
-            G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
+            if isinstance(sprite, FloatingText):
+                texts.append(sprite)
+            else:
+                G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
         if self.decor_front is not None:
             G.screen.blit(self.decor_front, -draw_offset)
         for sign in self.hint_signs:
             if sign.near and sign.bubble is not None:
                 G.screen.blit(sign.bubble, pygame.Vector2(sign.bubble_rect.topleft) - draw_offset)
+        # score and pickup texts go over everything, hint bubbles included
+        for text in texts:
+            G.screen.blit(text.image, pygame.Vector2(text.rect.topleft) - draw_offset)

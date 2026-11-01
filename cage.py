@@ -28,8 +28,8 @@ class CagePrompt(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(cage.rect.centerx, self.base_y))
 
     def render_prompt(self):
-        line1 = self.font.render("[E] OR [SPACE]", True, YELLOW)
-        line2 = self.font.render("BREAK THE CAGE!", True, WHITE)
+        line1 = self.font.render("[E] ya da [Boşluk]", True, YELLOW)
+        line2 = self.font.render("Kafesi kır!", True, WHITE)
 
         padding = 8
         width = max(line1.get_width(), line2.get_width()) + padding * 2
@@ -56,7 +56,7 @@ class FreedomBanner(pygame.sprite.Sprite):
 
     def __init__(self, pos, font):
         super().__init__(G.all_sprites_group)
-        text = font.render("FREEDOM!", True, YELLOW)
+        text = font.render("Özgürlük!", True, YELLOW)
 
         w, h = text.get_width() + 16, text.get_height() + 10
         surf = pygame.Surface((w, h), pygame.SRCALPHA)

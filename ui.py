@@ -43,6 +43,8 @@ def spawn_floating_text(text, pos, color=(255, 255, 255), duration=45):
 G.create_floating_text = spawn_floating_text
 
 
+# Turkish texts use sentence case: the pixel font draws Ç Ğ İ Ö Ş Ü as small letters,
+# so all-caps words such as BÖLÜM would look broken.
 class UI:
     def __init__(self, font):
         self.current_health = 100
@@ -74,7 +76,7 @@ class UI:
             pygame.draw.rect(G.screen, fill_color, (bar_x, bar_y, fill_w, bar_height), border_radius=2)
 
         # HP Text label
-        hp_label = self.small_font.render(f"HP {int(self.current_health)}/{self.maximum_health}", True, WHITE)
+        hp_label = self.small_font.render(f"Can {int(self.current_health)}/{self.maximum_health}", True, WHITE)
         G.screen.blit(hp_label, (bar_x + bar_width + 10, bar_y + 2))
 
     def display_ammo(self):
@@ -85,10 +87,10 @@ class UI:
             # Pulsing reload text
             ticks = pygame.time.get_ticks()
             color = (255, 220, 50) if (ticks // 250) % 2 == 0 else (200, 160, 20)
-            text = self.small_font.render("RELOADING...", True, color)
+            text = self.small_font.render("Dolduruluyor...", True, color)
         else:
             color = WHITE if G.player.current_ammo > 5 else (231, 76, 60)
-            text = self.small_font.render(f"AMMO {G.player.current_ammo} / {G.player.total_ammo}", True, color)
+            text = self.small_font.render(f"Mermi {G.player.current_ammo} / {G.player.total_ammo}", True, color)
         G.screen.blit(text, (24, ammo_y))
 
     def display_items(self):
@@ -96,8 +98,8 @@ class UI:
         if G.player is None:
             return
         x = 24
-        for count, text, color in ((G.player.armor, "ZIRH x{}", (200, 225, 255)),
-                                   (G.player.acid, "ASİT x{} [Q]", (150, 255, 90))):
+        for count, text, color in ((G.player.armor, "Zırh x{}", (200, 225, 255)),
+                                   (G.player.acid, "Asit x{} [Q]", (150, 255, 90))):
             if count > 0:
                 label = text.format(count)
                 G.screen.blit(self.small_font.render(label, True, (20, 24, 32)), (x + 1, 67))
@@ -106,7 +108,7 @@ class UI:
                 x += surface.get_width() + 18
 
     def display_score(self):
-        score_text = self.font.render(f"SCORE {game_stats['score']}", True, WHITE)
+        score_text = self.font.render(f"Skor {game_stats['score']}", True, WHITE)
         score_rect = score_text.get_rect(center=(WIDTH // 2, 28))
         G.screen.blit(score_text, score_rect)
 
@@ -124,7 +126,9 @@ class UI:
         G.screen.blit(coin_text, (WIDTH - 90, 18))
 
     def display_level(self):
-        level_text = self.font.render(f"LEVEL {game_stats['current_level'] + 1}", True, WHITE)
+        level = game_stats["current_level"]
+        label = "Eğitim" if level == 0 else f"Bölüm {level}"  # level 0 is the tutorial
+        level_text = self.font.render(label, True, WHITE)
         level_rect = level_text.get_rect(topright=(WIDTH - 160, 18))
         G.screen.blit(level_text, level_rect)
 

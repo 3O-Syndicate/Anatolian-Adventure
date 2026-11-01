@@ -316,13 +316,13 @@ class Player(pygame.sprite.Sprite):
         """Chest contents: shotgun ammo, armor against one hit, or acid flasks."""
         if item == "shotgun":
             self.total_ammo += 30
-            text = "TÜFEK: +30 MERMİ"
+            text = "Tüfek: +30 mermi"
         elif item == "armor":
             self.armor += 1
-            text = "ZIRH: BİR DARBEYİ DURDURUR"
+            text = "Zırh: bir darbeyi durdurur"
         elif item == "acid":
             self.acid += 3
-            text = "ASİT x3: Q İLE YERE DÖK"
+            text = "Asit x3: Q ile yere dök"
         else:
             return
         if G.health_potion_sound:
@@ -345,7 +345,7 @@ class Player(pygame.sprite.Sprite):
             G.game_level.shake_timer = 10
             G.game_level.shake_amount = 4
         if getattr(G, "create_floating_text", None):
-            G.create_floating_text("ZIRH KIRILDI!", (self.base_player_rect.centerx, self.rect.top - 8),
+            G.create_floating_text("Zırh kırıldı!", (self.base_player_rect.centerx, self.rect.top - 8),
                                    (160, 200, 255), duration=90)
 
     def start_reload(self):
@@ -510,7 +510,7 @@ class Player(pygame.sprite.Sprite):
                 from settings import game_stats
                 game_stats["score"] += 200
                 if getattr(G, "create_floating_text", None):
-                    G.create_floating_text("CHECKPOINT!", (cp.rect.centerx, cp.rect.top - 12), (100, 255, 150))
+                    G.create_floating_text("Kontrol noktası!", (cp.rect.centerx, cp.rect.top - 12), (100, 255, 150))
 
         # Chests open once; wallets are picked up
         for chest in getattr(G.game_level, "chests", []):
@@ -526,7 +526,7 @@ class Player(pygame.sprite.Sprite):
                 if G.coin_sound:
                     G.coin_sound.play()
                 if getattr(G, "create_floating_text", None):
-                    G.create_floating_text("CÜZDAN: +5 ALTIN", (wallet.rect.centerx, wallet.rect.top - 12),
+                    G.create_floating_text("Cüzdan: +5 altın", (wallet.rect.centerx, wallet.rect.top - 12),
                                            (255, 223, 91), duration=90)
 
         # Goal
@@ -537,7 +537,7 @@ class Player(pygame.sprite.Sprite):
                 from settings import game_stats
                 game_stats["score"] += 1000
                 if getattr(G, "create_floating_text", None):
-                    G.create_floating_text("STAGE CLEAR! +1000", (goal.rect.centerx, goal.rect.top - 16), (255, 215, 0))
+                    G.create_floating_text("Bölüm sonu! +1000", (goal.rect.centerx, goal.rect.top - 16), (255, 215, 0))
                 if G.game_level:
                     G.game_level.shake_timer = 12
                     G.game_level.shake_amount = 4

@@ -1,4 +1,5 @@
-"""Run Anatolian Adventure's test level, pause screen, and restart flow."""
+"""Run Anatolian Adventure: levels in order, pause screen, game over, completion and restart."""
+import os
 import sys
 import pygame
 import globals as G
@@ -27,15 +28,25 @@ def create_game_objects(font):
     return game_level, player, ui
 
 
-def reset_for_new_game(font, start_level=0):
-    """Clear the old session before creating fresh map, player, and HUD objects."""
+def reset_for_new_game(font, start_level=0, keep_score=False):
+    """Clear the old session before creating fresh map, player, and HUD objects.
+
+    Moving on to the next level keeps the score and coins; a new game or a
+    retry after game over starts them from zero.
+    """
     for sprite in list(G.all_sprites_group):
         sprite.kill()
     G.bullet_group.empty()
     G.items_group.empty()
     G.enemy_group.empty()
-    game_stats.update(coins=0, score=0, current_level=start_level)
+    game_stats["current_level"] = start_level
+    if not keep_score:
+        game_stats.update(coins=0, score=0)
     return create_game_objects(font)
+
+
+def has_level(level_num):
+    return os.path.isfile(f"levels/{level_num}.json")
 
 
 def start_level_from_args(args):
@@ -62,23 +73,35 @@ def main():
     volume_button = Button(WIDTH - 70, 20, volume_image, 0.05)
     game_active = True
     game_paused = False
+    game_finished = False  # the last level's goal was reached
 
     def display_level_cleared_banner():
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 90))
         G.screen.blit(overlay, (0, 0))
-        cleared_text = title_font.render("STAGE CLEAR!", True, YELLOW)
+        cleared_text = title_font.render("Bölüm geçildi!", True, YELLOW)
         G.screen.blit(cleared_text, cleared_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 30)))
-        next_text = font.render("Loading next stage...", True, WHITE)
+        last = not has_level(game_stats["current_level"] + 1)
+        next_text = font.render("Son bölümdü!" if last else "Sıradaki bölüm yükleniyor...", True, WHITE)
         G.screen.blit(next_text, next_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30)))
 
     def display_end_screen():
+        """Game over, or the completion screen after the last level."""
         G.screen.fill(BLACK)
-        G.screen.blit(title_font.render("GAME OVER", True, WHITE), (350, 50))
-        G.screen.blit(font.render("Your score:", True, WHITE), (550, 150))
-        G.screen.blit(title_font.render(f"{game_stats['score']:,}", True, WHITE), (550, 250))
-        text = font.render("Press 'P' to play again", True, YELLOW)
-        G.screen.blit(text, text.get_rect(center=(WIDTH // 2, HEIGHT * 7 // 8)))
+        if game_finished:
+            lines = (("Tebrikler!", title_font, YELLOW, 110),
+                     ("Bütün bölümleri bitirdin", font, WHITE, 190))
+            again = "Baştan oynamak için P"
+        else:
+            lines = (("Oyun bitti", title_font, WHITE, 110),)
+            again = "Bu bölümü tekrar denemek için P"
+        lines += (("Skorun:", font, WHITE, 290),
+                  (f"{game_stats['score']:,}", title_font, WHITE, 360),
+                  (f"Altın: {game_stats['coins']}", font, (255, 223, 91), 430),
+                  (again, font, YELLOW, HEIGHT * 7 // 8))
+        for text, text_font, color, y in lines:
+            surface = text_font.render(text, True, color)
+            G.screen.blit(surface, surface.get_rect(center=(WIDTH // 2, y)))
 
     def display_pause_screen():
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -87,9 +110,9 @@ def main():
         if volume_button.draw(G.screen):
             assets.update_sound_volume(round((G.sound_volume + 0.25) % 1.25, 2))
         for text, text_font, color, y in (
-            ("PAUSED", title_font, WHITE, HEIGHT // 2 - 50),
-            ("Press 'ESC' to Resume", font, YELLOW, HEIGHT // 2 + 20),
-            ("Press 'Q' to Quit Game", font, RED, HEIGHT // 2 + 60),
+            ("Duraklatıldı", title_font, WHITE, HEIGHT // 2 - 50),
+            ("Devam etmek için ESC", font, YELLOW, HEIGHT // 2 + 20),
+            ("Oyundan çıkmak için Q", font, RED, HEIGHT // 2 + 60),
         ):
             surface = text_font.render(text, True, color)
             G.screen.blit(surface, surface.get_rect(center=(WIDTH // 2, y)))
@@ -114,9 +137,11 @@ def main():
                     pygame.quit()
                     sys.exit()
                 elif not game_active and event.key == pygame.K_p:
-                    game_level, player, ui = reset_for_new_game(font, game_stats["current_level"])
+                    start = 0 if game_finished else game_stats["current_level"]
+                    game_level, player, ui = reset_for_new_game(font, start)
                     game_active = True
                     game_paused = False
+                    game_finished = False
                     assets.play_bgm()
 
         if game_active:
@@ -130,11 +155,16 @@ def main():
                     if game_level.level_completed:
                         game_level.level_clear_timer += 1
                         if game_level.level_clear_timer > 90:
-                            import os
                             next_lvl = game_stats["current_level"] + 1
-                            if not os.path.isfile(f"levels/{next_lvl}.json"):
-                                next_lvl = 0
-                            game_level, player, ui = reset_for_new_game(font, next_lvl)
+                            if has_level(next_lvl):
+                                game_level, player, ui = reset_for_new_game(font, next_lvl, keep_score=True)
+                            else:
+                                game_active = False
+                                game_finished = True
+                                try:
+                                    pygame.mixer.music.fadeout(800)
+                                except Exception:
+                                    pass
                 else:
                     player.update()  # death animation; the world waits for it
                 if player.death_finished and game_level.last_checkpoint is not None:
@@ -158,7 +188,7 @@ def main():
         else:
             display_end_screen()
         pygame.display.set_caption(
-            f"Anatolian Adventure | FPS: {clock.get_fps():.0f} | Score: {game_stats['score']}"
+            f"Anatolian Adventure | FPS: {clock.get_fps():.0f} | Skor: {game_stats['score']}"
         )
         pygame.display.update()
         clock.tick(FPS)

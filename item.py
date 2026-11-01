@@ -79,7 +79,7 @@ class Item(pygame.sprite.Sprite):
                     heal_amt = game_stats.get("health_potion_heal", 20)
                     G.player.increase_health(heal_amt)
                     if getattr(G, "create_floating_text", None):
-                        G.create_floating_text(f"+{heal_amt} HP", self.rect.center, (100, 255, 100))
+                        G.create_floating_text(f"+{heal_amt} can", self.rect.center, (100, 255, 100))
                     self.kill()
 
             elif self.type == "coin":
@@ -94,5 +94,5 @@ class Item(pygame.sprite.Sprite):
                 if G.coin_sound: G.coin_sound.play()
                 G.player.total_ammo += 30
                 if getattr(G, "create_floating_text", None):
-                    G.create_floating_text("+30 AMMO", self.rect.center, (100, 200, 255))
+                    G.create_floating_text("+30 mermi", self.rect.center, (100, 200, 255))
                 self.kill()
