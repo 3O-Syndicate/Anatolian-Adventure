@@ -18,10 +18,11 @@ A level is a dict:
                 "front" in front of the player. Decor never collides.
     entities    [{"type": "walker", "x": 10, "y": 20, "dir": -1}, ...]
                 one tile each, see ENTITY_TYPES. Extra keys per type:
-                  walker/turtle  dir: -1 starts walking left, 1 right
+                  walker/turtle/goblin  dir: -1 starts walking left, 1 right
                   tunnel         pair: two tunnels with the same pair connect
                   chest          item: one of CHEST_ITEMS
                   hint           text: the tip shown on the sign
+                npc is the old man who wants the 33 tesbih beads (one, at the end)
 
 Old colour-mask levels (levels/<n>_mask.png) still load: they are converted
 with mask_to_level(). Convert one for good with:
@@ -44,14 +45,17 @@ ENTITY_TYPES = {
     "player":     ({}, "one"),
     "walker":     ({"dir": -1}, "any"),
     "turtle":     ({"dir": -1}, "any"),
+    "goblin":     ({"dir": -1}, "any"),
     "health":     ({}, "any"),
     "coin":       ({}, "any"),
+    "bead":       ({}, "any"),
     "tunnel":     ({"pair": 1}, "pairs"),
     "checkpoint": ({}, "any"),
     "goal":       ({}, "one"),
     "chest":      ({"item": "shotgun"}, "any"),
     "wallet":     ({}, "any"),
     "hint":       ({"text": ""}, "any"),
+    "npc":        ({}, "any"),
 }
 CHEST_ITEMS = ("acid", "shotgun", "armor")
 DECOR_LAYERS = ("back", "front")

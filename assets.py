@@ -64,7 +64,8 @@ def play_bgm(path="sounds/Tiled_Rooftop_Dash.mp3", volume_ratio=0.25):
 
 HERO_ANIMATIONS = ("idle", "run", "jump", "fall", "land", "duck", "shoot",
                    "duck_shoot", "reload", "hurt", "death")
-ENEMY_ANIMATIONS = ("walker/walk", "turtle/walk", "turtle/shell", "turtle/spin")
+ENEMY_ANIMATIONS = ("walker/walk", "turtle/walk", "turtle/shell", "turtle/spin",
+                    "goblin/walk", "goblin/run")
 
 def placeholder_hero_animations():
 	"""Single green frame for every hero animation, used when frames are missing."""
@@ -121,6 +122,16 @@ def load_assets():
 	except Exception:
 		assets['coin_imgs'] = []
 		print("Warning: coin animation folder not found or empty.")
+
+	# tesbih bead frames (folder); the HUD shows the first one at 2x
+	try:
+		assets['bead_imgs'] = import_folder("items/bead")
+	except Exception:
+		assets['bead_imgs'] = []
+	if not assets['bead_imgs']:
+		print("Warning: bead frames not found: items/bead")
+	assets['bead_icon'] = (pygame.transform.scale_by(assets['bead_imgs'][0], 2)
+	                       if assets['bead_imgs'] else None)
 
 	# player base image (single image path)
 	try:
@@ -265,6 +276,8 @@ def load_assets():
 	G.muzzle_flash_imgs = assets['muzzle_flash_imgs']
 	G.enemy_frames = assets['enemy_frames']
 	G.coin_icon = assets['coin_icon']
+	G.bead_imgs = assets['bead_imgs']
+	G.bead_icon = assets['bead_icon']
 
 	# sounds
 	G.coin_sound = assets.get('coin_sound')

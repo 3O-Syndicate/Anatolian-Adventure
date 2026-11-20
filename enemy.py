@@ -53,7 +53,8 @@ def resolve_enemy_collisions():
 class WalkingEnemy(pygame.sprite.Sprite):
     is_moving_shell = False
     # game ticks per animation frame
-    FRAME_TICKS = {"walker/walk": 8, "turtle/walk": 10, "turtle/shell": 1, "turtle/spin": 3}
+    FRAME_TICKS = {"walker/walk": 8, "turtle/walk": 10, "turtle/shell": 1, "turtle/spin": 3,
+                   "goblin/walk": 9, "goblin/run": 5}
 
     def __init__(self, pos, direction=-1):
         super().__init__(G.enemy_group, G.all_sprites_group)
@@ -239,3 +240,109 @@ class TurtleEnemy(WalkingEnemy):
             self.kick(player)
             return False
         return self.kicker is not player
+
+
+class GoblinEnemy(WalkingEnemy):
+    """Long-nosed goblin with long yellow hair: patrols slowly and runs at a
+    player who comes near on about the same level.
+
+    It gives up when the player gets far away. A stomp kills it; it takes
+    two bullets, and the first one makes it run at the shooter.
+    """
+    WALK_SPEED = 1.5
+    RUN_SPEED = 4.5
+    SIGHT = 6 * TILESIZE        # how far ahead or behind it notices the player
+    GIVE_UP = 10 * TILESIZE
+    HEIGHT_RANGE = 2 * TILESIZE  # feet within this height difference count as "same level"
+    HEALTH = 2
+    SCORE = 150
+    SIZE = (TILESIZE, 44)       # used when the artwork is missing
+    HIT_FLASH = 8
+
+    def __init__(self, pos, direction=-1):
+        self.charging = False   # set first: the base __init__ picks the first frame
+        self.hit_flash = 0
+        super().__init__(pos, direction)
+        frames = (G.enemy_frames or {}).get("goblin/walk")
+        size = frames[0][0].get_size() if frames else self.SIZE
+        if not frames:
+            self.image = pygame.Surface(size, pygame.SRCALPHA)
+            self.image.fill((102, 146, 60))
+        # stand on the floor of the spawn tile; the sprite is taller than a tile
+        self.rect = pygame.Rect((0, 0), size)
+        self.rect.midbottom = (pos[0] + TILESIZE // 2, pos[1] + TILESIZE)
+        self.previous_rect = self.rect.copy()
+        self.position = pygame.Vector2(self.rect.topleft)
+        self.speed = self.WALK_SPEED
+        self.health = self.HEALTH
+
+    def current_animation(self):
+        return "goblin/run" if self.charging else "goblin/walk"
+
+    def animate(self):
+        super().animate()
+        if self.hit_flash > 0:
+            self.hit_flash -= 1
+            self.image = self.image.copy()
+            self.image.fill((90, 90, 90), special_flags=pygame.BLEND_RGB_ADD)
+
+    def charge(self, toward_x):
+        if not self.charging and getattr(G, "create_floating_text", None):
+            G.create_floating_text("!", (self.rect.centerx, self.rect.top - 6), (255, 90, 60), duration=30)
+        self.charging = True
+        self.speed = self.RUN_SPEED
+        self.face(toward_x)
+
+    def calm_down(self):
+        self.charging = False
+        self.speed = self.WALK_SPEED
+
+    def face(self, x):
+        if abs(x - self.rect.centerx) > 4:  # no flipping back and forth right under the player
+            self.direction = 1 if x > self.rect.centerx else -1
+
+    def look_for_player(self):
+        player = G.player
+        if player is None or player.is_caged or player.health <= 0:
+            self.calm_down()
+            return
+        dx = abs(player.base_player_rect.centerx - self.rect.centerx)
+        dy = abs(player.base_player_rect.bottom - self.rect.bottom)
+        if self.charging:
+            if dx > self.GIVE_UP or dy > self.HEIGHT_RANGE * 2:
+                self.calm_down()
+            else:
+                self.face(player.base_player_rect.centerx)
+        elif dx < self.SIGHT and dy < self.HEIGHT_RANGE:
+            self.charge(player.base_player_rect.centerx)
+
+    def update(self):
+        if G.player is not None and getattr(G.player, "is_caged", False):
+            return
+        self.look_for_player()
+        super().update()
+
+    def die(self):
+        from settings import game_stats
+        game_stats["score"] += self.SCORE
+        if getattr(G, "enemy_death_sound", None):
+            G.enemy_death_sound.play()
+        if getattr(G, "create_floating_text", None):
+            G.create_floating_text(f"+{self.SCORE}", self.rect.center, (255, 220, 50))
+        self.kill()
+
+    def on_stomp(self, player):
+        self.die()
+
+    def on_bullet_hit(self, bullet):
+        self.health -= 1
+        if self.health <= 0:
+            self.die()
+            return
+        self.hit_flash = self.HIT_FLASH
+        if getattr(G, "hurt_sound", None):
+            G.hurt_sound.play()
+        # knocked back a little, then it comes for the shooter
+        self.position.x += 6 if bullet.x_vel > 0 else -6
+        self.rect.x = round(self.position.x)
+        self.charge(self.rect.centerx - bullet.x_vel * 100)

@@ -57,9 +57,9 @@ OUTSIDE = (22, 24, 32)
 
 TABS = (("terrain", "Zemin"), ("decor", "Dekor"), ("entity", "Nesne"))
 ENTITY_LABELS = {
-    "player": "Oyuncu", "walker": "Kaz", "turtle": "Tosbağa", "health": "Can",
-    "coin": "Altın", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
-    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu",
+    "player": "Oyuncu", "walker": "Kaz", "turtle": "Tosbağa", "goblin": "Goblin", "health": "Can",
+    "coin": "Altın", "bead": "Boncuk", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
+    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu", "npc": "Dede (NPC)",
 }
 ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Zırh"}
 TERRAIN_LABELS = {0: "Görünmez", 1: "Zemin", 2: "Toprak", 3: "Tuğla", 4: "Bulut"}
@@ -88,14 +88,17 @@ class Art:
             "player": (load_image("player/hero/idle/0.png"), "midbottom"),
             "walker": (load_image("enemies/walker/walk/0.png"), "midbottom"),
             "turtle": (load_image("enemies/turtle/walk/0.png"), "midbottom"),
+            "goblin": (load_image("enemies/goblin/walk/0.png"), "midbottom"),
             "health": (load_image("items/health.png"), "center"),
             "coin": (load_image("items/coin/0.png"), "center"),
+            "bead": (load_image("items/bead/0.png"), "center"),
             "tunnel": (None, "center"),
             "checkpoint": (load_image("objects/checkpoint/1.png"), "bottomleft"),
             "goal": (load_image("objects/goal/0.png"), "bottomleft"),
             "chest": (load_image("objects/chest/0.png"), "midbottom"),
             "wallet": (load_image("objects/wallet/0.png"), "midbottom"),
             "hint": (load_image("decor/sign.png"), "midbottom"),
+            "npc": (load_image("objects/npc/0.png"), "midbottom"),
         }
         self.invisible = pygame.Surface((TILESIZE, TILESIZE), pygame.SRCALPHA)
         self.invisible.fill((255, 0, 255, 70))
@@ -327,7 +330,7 @@ class Editor:
         entity = level_format.new_entity(kind, col, row)
         if kind == "tunnel":
             entity["pair"] = self.free_tunnel_pair()
-        if kind in ("walker", "turtle") and old is not None and old["type"] == kind:
+        if kind in ("walker", "turtle", "goblin") and old is not None and old["type"] == kind:
             entity["dir"] = old["dir"]
         entities.append(entity)
         self.dirty = True

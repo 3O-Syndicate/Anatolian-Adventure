@@ -11,12 +11,17 @@ is touched.
 
 | File | Level |
 | --- | --- |
-| `levels/0.json` | Tutorial: Turkish hint signs teach moving, jumping, shooting, tunnels, the checkpoint, chests and acid; the side cave under the pipe holds the acid and shotgun chests |
-| `levels/1.json` | Sample level that shows every feature (decor on both layers, coins, a tunnel pair, enemies facing both ways, checkpoint, goal); rework or replace it freely |
-| `levels/2.json` | Oğuzhan's test map with the teleport tunnels, converted from `2_mask.png`; it has no goal yet, so it stays last |
+| `levels/0.json` | Tutorial: Turkish hint signs teach moving, jumping, shooting, tunnels, the checkpoint, chests, acid, the golden beads and the goblin; the side cave under the pipe holds the acid and shotgun chests |
+| `levels/1.json` | Sample level that shows every feature (decor on both layers, coins, a tunnel pair, enemies facing both ways, three goblins, checkpoint, goal); two of its beads hang over the pits |
+| `levels/2.json` | The last level, grown from Oğuzhan's teleport test map (`2_mask.png`): a valley between two plateaus, a tunnel shortcut from the valley's left rim to the far plateau, checkpoints in the valley and on the plateau, goblins, and at the end the old man who wants the beads, then the goal |
+
+Each level holds 13 golden tesbih beads, 39 in all; the old man needs 33
+(`BEADS_NEEDED` in `settings.py`), so a player can miss a few. Levels are
+played in order and there is no way back, so keep that margin when moving
+beads.
 
 Play a level directly with `python main.py --level 1`, or press F5 in the
-editor.
+editor. Such runs never touch the save file.
 
 ## Map editor
 
@@ -111,14 +116,17 @@ is drawn behind the terrain, `front` in front of the player.
 | `player` | Start position; the player's feet stand in this tile | |
 | `walker` | Walking enemy (goose art) | `dir`: -1 starts left, 1 right |
 | `turtle` | Shell enemy (tortoise art) | `dir` |
+| `goblin` | Goblin: walks, runs at a player within 6 tiles on about the same level; dies to a stomp or 2 bullets | `dir` |
 | `health` | Health pickup | |
 | `coin` | Coin | |
+| `bead` | Golden tesbih bead; the count carries over between levels | |
 | `tunnel` | Tunnel mouth, in an empty tile right above a floor | `pair`: mouths with the same pair connect |
 | `checkpoint` | Checkpoint flag; after touching it the player respawns there instead of losing | |
 | `goal` | Goal flag; touching it finishes the level | |
 | `chest` | Treasure chest, opens on touch: `shotgun` +30 ammo, `armor` stops one enemy hit, `acid` 3 flasks (Q pours a puddle that dissolves enemies for 4 s) | `item`: `acid`, `shotgun` or `armor` |
 | `wallet` | Dropped wallet: +5 coins | |
 | `hint` | Sign whose text pops up in a bubble while the player is near | `text` |
+| `npc` | The old man who wants 33 beads; talks in a bubble while the player is near (one, near the end of the last level) | |
 
 ## Old colour masks
 

@@ -1,15 +1,16 @@
-"""Run Anatolian Adventure: levels in order, pause screen, game over, completion and restart."""
+"""Run Anatolian Adventure: levels in order, saving, pause screen, game over, completion and restart."""
 import os
 import sys
 import pygame
 import globals as G
-from settings import WIDTH, HEIGHT, FPS, WHITE, YELLOW, RED, BLACK, game_stats
+from settings import WIDTH, HEIGHT, FPS, WHITE, YELLOW, RED, BLACK, BEADS_NEEDED, game_stats
 from player import Player
-from ui import UI
+from ui import UI, level_name
 from button import Button
 from game_level import GameLevel
 from enemy import resolve_enemy_collisions
 import assets
+import save
 from cage import Cage
 
 
@@ -31,8 +32,10 @@ def create_game_objects(font):
 def reset_for_new_game(font, start_level=0, keep_score=False):
     """Clear the old session before creating fresh map, player, and HUD objects.
 
-    Moving on to the next level keeps the score and coins; a new game or a
-    retry after game over starts them from zero.
+    keep_score=False starts the score and coins from zero. main() keeps them
+    and sets them itself: the next level carries them on, a new game zeroes
+    them, a retry after game over restores what the player had at the start
+    of the level.
     """
     for sprite in list(G.all_sprites_group):
         sprite.kill()
@@ -41,7 +44,7 @@ def reset_for_new_game(font, start_level=0, keep_score=False):
     G.enemy_group.empty()
     game_stats["current_level"] = start_level
     if not keep_score:
-        game_stats.update(coins=0, score=0)
+        game_stats.update(coins=0, score=0, beads=0)
     return create_game_objects(font)
 
 
@@ -50,15 +53,21 @@ def has_level(level_num):
 
 
 def start_level_from_args(args):
-    """`python main.py --level 2` starts and restarts on level 2 (the map editor's F5)."""
+    """`python main.py --level 2` starts and restarts on level 2 (the map editor's F5).
+
+    Such test runs never read or write the save, so playtesting a map cannot
+    overwrite the player's progress.
+    """
     if "--level" in args:
         return int(args[args.index("--level") + 1])
-    return 0
+    return None
 
 
 def main():
-    start_level = start_level_from_args(sys.argv[1:])
-    game_stats["current_level"] = start_level
+    test_level = start_level_from_args(sys.argv[1:])
+    test_run = test_level is not None
+    game_stats["current_level"] = test_level or 0
+    saved = None if test_run else save.load(level_exists=has_level)
     pygame.init()
     pygame.mixer.init()
     G.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -68,12 +77,42 @@ def main():
     title_font = pygame.font.Font("font/PublicPixel.ttf", 50)
     assets.load_assets()
     assets.play_bgm()
-    game_level, player, ui = create_game_objects(font)
     volume_image = pygame.image.load("sounds/volume_icon.jpg").convert_alpha()
     volume_button = Button(WIDTH - 70, 20, volume_image, 0.05)
     game_active = True
     game_paused = False
     game_finished = False  # the last level's goal was reached
+    in_menu = saved is not None  # "continue or new game?" before anything is built
+    game_level = player = ui = None
+    level_start = save.snapshot(game_stats)  # stats a retry after game over returns to
+
+    def start_level(level_num):
+        """Build a level with the stats the player has now; this is the save point."""
+        nonlocal game_level, player, ui, level_start
+        game_level, player, ui = reset_for_new_game(font, level_num, keep_score=True)
+        level_start = save.snapshot(game_stats)
+        if not test_run:
+            save.write(level_start)
+
+    def start_new_game():
+        game_stats.update(coins=0, score=0, beads=0)
+        start_level(0)
+
+    if not in_menu:
+        start_level(game_stats["current_level"])
+
+    def display_start_menu():
+        G.screen.fill(BLACK)
+        for text, text_font, color, y in (
+            ("Anatolian Adventure", title_font, YELLOW, 170),
+            (f"Kayıtlı oyun: {level_name(saved['level'])}", font, WHITE, 290),
+            (f"Skor {saved['score']:,}   Altın {saved['coins']}   Boncuk {saved['beads']}/{BEADS_NEEDED}",
+             font, WHITE, 330),
+            ("Devam etmek için Enter", font, YELLOW, 430),
+            ("Yeni oyun için N", font, WHITE, 480),
+        ):
+            surface = text_font.render(text, True, color)
+            G.screen.blit(surface, surface.get_rect(center=(WIDTH // 2, y)))
 
     def display_level_cleared_banner():
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -97,7 +136,8 @@ def main():
             again = "Bu bölümü tekrar denemek için P"
         lines += (("Skorun:", font, WHITE, 290),
                   (f"{game_stats['score']:,}", title_font, WHITE, 360),
-                  (f"Altın: {game_stats['coins']}", font, (255, 223, 91), 430),
+                  (f"Altın: {game_stats['coins']}   Boncuk: {game_stats['beads']}/{BEADS_NEEDED}",
+                   font, (255, 223, 91), 430),
                   (again, font, YELLOW, HEIGHT * 7 // 8))
         for text, text_font, color, y in lines:
             surface = text_font.render(text, True, color)
@@ -122,7 +162,16 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN and in_menu:
+                if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    save.apply(saved, game_stats)
+                    start_level(saved["level"])
+                    in_menu = False
+                elif event.key == pygame.K_n:
+                    save.clear()
+                    start_new_game()
+                    in_menu = False
+            elif event.type == pygame.KEYDOWN:
                 if game_active and not game_paused and player.is_caged and (event.key == pygame.K_e or event.key == pygame.K_SPACE):
                     if player.cage and not player.cage.is_broken:
                         player.cage.break_open()
@@ -137,14 +186,20 @@ def main():
                     pygame.quit()
                     sys.exit()
                 elif not game_active and event.key == pygame.K_p:
-                    start = 0 if game_finished else game_stats["current_level"]
-                    game_level, player, ui = reset_for_new_game(font, start)
+                    if game_finished:
+                        start_new_game()
+                    else:
+                        # back to the start of this level with what the player had there
+                        save.apply(level_start, game_stats)
+                        start_level(level_start["level"])
                     game_active = True
                     game_paused = False
                     game_finished = False
                     assets.play_bgm()
 
-        if game_active:
+        if in_menu:
+            display_start_menu()
+        elif game_active:
             if not game_paused:
                 if player.health > 0:
                     G.all_sprites_group.update()
@@ -157,10 +212,12 @@ def main():
                         if game_level.level_clear_timer > 90:
                             next_lvl = game_stats["current_level"] + 1
                             if has_level(next_lvl):
-                                game_level, player, ui = reset_for_new_game(font, next_lvl, keep_score=True)
+                                start_level(next_lvl)
                             else:
                                 game_active = False
                                 game_finished = True
+                                if not test_run:
+                                    save.clear()  # finished: the next launch starts a new game
                                 try:
                                     pygame.mixer.music.fadeout(800)
                                 except Exception:

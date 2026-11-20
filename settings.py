@@ -61,8 +61,12 @@ game_stats = {
     "coins": 0,
     "health_potion_heal": 20,
     "score": 0,
-    "current_level" : 0 
+    "current_level" : 0,
+    "beads": 0,  # golden tesbih beads, kept from level to level
 }
+
+# beads the elder needs; the levels hold a few more, so missing some is not fatal
+BEADS_NEEDED = 33
 
 items = {
     "health potion": {"image_path": "items/health.png", "has_animation": False},

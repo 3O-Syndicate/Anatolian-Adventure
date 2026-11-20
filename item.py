@@ -29,6 +29,10 @@ class Item(pygame.sprite.Sprite):
             self.frames = [pygame.transform.rotozoom(img, 0, 1.2) for img in G.coin_imgs]
             self.image = self.frames[0]
             loaded = True
+        elif type == "bead" and getattr(G, "bead_imgs", None):
+            self.frames = list(G.bead_imgs)
+            self.image = self.frames[0]
+            loaded = True
         elif item_info and item_info.get("image_path"):
             path = item_info["image_path"]
             try:
@@ -51,6 +55,9 @@ class Item(pygame.sprite.Sprite):
                 self.image.fill(RED)
             elif type == "coin":
                 self.image.fill(YELLOW)
+            elif type == "bead":
+                self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (222, 180, 70), (7, 7), 7)
             else:
                 self.image.fill(WHITE)
 
@@ -58,9 +65,9 @@ class Item(pygame.sprite.Sprite):
         self.start_y = self.rect.centery
 
     def update(self):
-        # Coin frame rotation animation
-        if self.type == "coin" and self.frames:
-            self.anim_timer += 0.25
+        # Coin spin / bead turning on its string
+        if self.frames:
+            self.anim_timer += 0.25 if self.type == "coin" else 0.1
             idx = int(self.anim_timer) % len(self.frames)
             current_center = self.rect.center
             self.image = self.frames[idx]
@@ -88,6 +95,19 @@ class Item(pygame.sprite.Sprite):
                 game_stats["score"] += 10
                 if getattr(G, "create_floating_text", None):
                     G.create_floating_text("+10", self.rect.center, (255, 223, 91))
+                self.kill()
+
+            elif self.type == "bead":
+                if G.coin_sound: G.coin_sound.play()
+                game_stats["beads"] += 1
+                game_stats["score"] += 50
+                if getattr(G, "create_floating_text", None):
+                    if game_stats["beads"] == BEADS_NEEDED:
+                        G.create_floating_text(f"{BEADS_NEEDED} boncuk tamam!", self.rect.center,
+                                               (255, 235, 140), duration=150)
+                    else:
+                        G.create_floating_text(f"Boncuk {game_stats['beads']}/{BEADS_NEEDED}",
+                                               self.rect.center, (255, 223, 91), duration=60)
                 self.kill()
 
             elif self.type == "ammo":

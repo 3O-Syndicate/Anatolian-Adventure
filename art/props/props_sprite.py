@@ -9,7 +9,7 @@ Code names stay neutral so the lore can change without renaming files:
   turtle = the shell enemy (drawn as an Anatolian tortoise)
 
 Run:  python art/props/props_sprite.py
-Writes enemies/, decor/, objects/ and previews in art/props/out/.
+Writes enemies/, decor/, objects/, items/bead/ and previews in art/props/out/.
 """
 import math
 import random
@@ -107,7 +107,79 @@ def turtle_shell(scroll=0, streaks=False):
     return img
 
 
+def goblin(step, bob, lean, sway, arms):
+    """Hunched goblin, 32x44, facing right: long yellow hair, long warty nose,
+    pointed ear, ragged tunic, bare feet.
+
+    step: ((back foot dx, lift), (front foot dx, lift)); bob: body y offset;
+    lean: head/torso x offset (running leans forward); sway: hair tip x offset;
+    arms: (back hand dx, front hand dx) relative to the hips.
+    """
+    K = Kit(32, 44)
+    c = K.canvas()
+    skin, dark = RAMPS["goblin"], RAMPS["goblin"][0]
+    ink = RAMPS["hair"][0]
+    (fa, lift_a), (fb, lift_b) = step
+    hip_y = 32 + bob
+    hx, hy = 15 + lean, 14 + bob          # head centre
+    sx, sy = 15 + lean * 0.5, 24 + bob    # shoulders
+    # back arm and back leg
+    c.draw(K.capsule((sx - 1, sy), (16 + arms[0], sy + 6), 1.3), "goblin", "arm_back")
+    c.draw(K.capsule((13, hip_y), (12 + fa, 41 - lift_a), 1.6, 1.3), "goblin", "leg_back")
+    c.draw(K.ellipse(13.5 + fa, 42.2 - lift_a, 2.6, 1.3), "goblin", "leg_back")
+    # long yellow hair falling down the back, behind head and body
+    c.draw(K.capsule((hx - 3, hy - 4), (6 + sway, 30 + bob), 4.8, 2.6) |
+           K.capsule((hx - 1, hy - 6), (9 + sway * 0.6, 27 + bob), 3.4, 1.8),
+           "blond", "hair_back")
+    # ragged tunic
+    c.draw(K.ellipse(sx - 0.5, sy + 3, 5.8, 6.2) | K.ellipse(14.5, hip_y - 1.5, 5.4, 3.2),
+           "bark", "tunic")
+    for x in (10, 13, 16, 18):  # torn hem
+        c.px(RAMPS["bark"][0], (x, hip_y + 1), (x + 1, hip_y + 2))
+    # front leg
+    c.draw(K.capsule((16, hip_y), (16 + fb, 41 - lift_b), 1.7, 1.4), "goblin", "leg_front")
+    c.draw(K.ellipse(16.5 + fb, 42.2 - lift_b, 2.7, 1.3), "goblin", "leg_front")
+    # big head; the hair only covers the crown and the back of the skull
+    c.draw(K.ellipse(hx, hy, 7.8, 7.2), "goblin", "head")
+    c.draw(K.ellipse(hx - 2, hy - 5, 7.0, 3.6).where(K.YY < hy - 3.5) |
+           K.ellipse(hx - 6, hy - 1, 2.8, 5.5), "blond", "hair_cap")
+    for x in (int(hx) - 4, int(hx) - 1, int(hx) + 2):  # strand lines
+        c.px(RAMPS["blond"][1], (x, int(hy) - 6), (x + 1, int(hy) - 5))
+    # long pointed ear, sticking out backwards over the hair
+    c.draw(K.poly([(hx - 4, hy - 1.5), (hx - 13.5, hy - 5), (hx - 4, hy + 2.5)], tilt=-0.1),
+           "goblin", "ear")
+    c.px(dark, (int(hx) - 9, int(hy) - 3), (int(hx) - 8, int(hy) - 2))
+    # long drooping nose with warts
+    nose_tip = (min(29.5, hx + 12.5), hy + 4.5)
+    c.draw(K.capsule((hx + 5.5, hy), nose_tip, 2.4, 1.2), "goblin", "nose")
+    for x, y in ((hx + 9, hy + 1), (hx + 1.5, hy + 3)):
+        c.px(dark, (int(x), int(y)), (int(x) + 1, int(y)))
+        c.px(skin[3], (int(x), int(y) - 1))
+    # mean yellow eye under a slanted brow
+    ex, ey = int(hx + 3), int(hy - 2)
+    c.px((250, 226, 90), (ex - 1, ey), (ex, ey))
+    c.px(ink, (ex + 1, ey), (ex - 1, ey - 2), (ex, ey - 2), (ex + 1, ey - 1), (ex + 2, ey - 1))
+    # grin with one tooth, under the nose
+    my = int(hy + 4)
+    c.px(ink, *[(int(hx) - 1 + i, my + (0 if i in (0, 5) else 1)) for i in range(6)])
+    c.px((240, 236, 210), (int(hx) + 1, my))
+    # front arm hanging forward, clawed hand
+    hand = (20 + arms[1], sy + 7)
+    c.draw(K.capsule((sx + 3, sy + 1), hand, 1.5, 1.3), "goblin", "arm_front")
+    c.draw(K.ellipse(hand[0] + 0.5, hand[1] + 0.5, 1.9, 1.7), "goblin", "arm_front")
+    c.px(dark, (int(hand[0]) + 2, int(hand[1]) + 2), (int(hand[0]), int(hand[1]) + 2))
+    return c.image()
+
+
 ENEMIES = {
+    "goblin/walk": [goblin(((-3, 0), (3, 0)), 0, 0, 0, (2, -3)),
+                    goblin(((-1, 1), (1, 0)), -1, 0, 1, (0, -1)),
+                    goblin(((3, 0), (-3, 0)), 0, 0, 0, (-3, 2)),
+                    goblin(((1, 0), (-1, 1)), -1, 0, 1, (-1, 0))],
+    "goblin/run": [goblin(((-5, 0), (5, 1)), 0, 1, -2, (6, -2)),
+                   goblin(((-2, 2), (2, 0)), -1, 1, -3, (7, 1)),
+                   goblin(((5, 1), (-5, 0)), 0, 1, -2, (6, -2)),
+                   goblin(((2, 0), (-2, 2)), -1, 1, -3, (7, 1))],
     "walker/walk": [goose(((-2, 0), (2, 0)), 0, 0),
                     goose(((0, 2), (0, 0)), -1, 1),
                     goose(((2, 0), (-2, 0)), 0, 0),
@@ -311,12 +383,80 @@ def wallet():
     return c.image()
 
 
+def elder(swing):
+    """Placeholder NPC (code name npc): an old man with a flat cap, white beard,
+    waistcoat and walking stick, a tesbih hanging from his hand. 40x64; drawn
+    facing right, saved facing left, towards a player arriving from the left.
+    swing: x offset of the hanging tesbih loop."""
+    K = Kit(40, 64)
+    c = K.canvas()
+    ink = RAMPS["hair"][0]
+    # legs and shoes
+    for x in (17, 23):
+        c.draw(K.capsule((x, 45), (x, 59), 2.6, 2.3), "pants", f"leg{x}")
+        c.draw(K.ellipse(x + 1.5, 61, 3.6, 1.8).where(K.YY < 63), "shoe", f"shoe{x}")
+    # brown jacket over a white shirt that shows down the front
+    c.draw(K.ellipse(20, 36, 7.5, 10.5) | K.ellipse(20, 45, 6.5, 3.5), "belt", "jacket")
+    c.draw(K.poly([(22.5, 27), (26.5, 27), (25.5, 38), (23.5, 38)], tilt=0.0), "shirt", "shirt")
+    for y in (31, 35):  # jacket buttons
+        c.px(RAMPS["brass"][2], (22, y))
+    # head, white beard and moustache, flat cap with its brim forward
+    c.draw(K.ellipse(22, 18, 6.2, 6.6), "skin", "head")
+    c.draw(K.ellipse(24.5, 24, 5.0, 5.6) | K.ellipse(26.5, 20.8, 3.2, 1.5), "cloth", "beard")
+    c.draw(K.ellipse(21, 13, 7.2, 3.6).where(K.YY < 14.5) |
+           K.poly([(24, 11.5), (31.5, 13), (31, 14.6), (24, 14.6)], tilt=0.2), "metal", "cap")
+    c.px(ink, (25, 17))                                   # eye
+    c.px(RAMPS["cloth"][3], (24, 15), (25, 15), (26, 15))  # bushy white brow
+    c.px(RAMPS["skin"][1], (28, 18), (28, 19))           # nose
+    c.draw(K.ellipse(17, 18, 1.6, 2.2), "skin", "ear")
+    # back arm across the belly: the tesbih hangs from that hand, golden beads
+    # in a loop with a red tassel
+    hx, hy = 25, 42
+    c.draw(K.capsule((17, 28), (hx - 1, hy - 1), 2.3, 2.0), "belt", "arm_back")
+    c.draw(K.ellipse(hx, hy, 2.0, 1.8), "skin", "hand_back")
+    loop = [(hx - 1, hy + 2), (hx - 2 + swing, hy + 4), (hx - 2 + swing, hy + 6),
+            (hx - 1 + swing, hy + 8), (hx + 1 + swing, hy + 8), (hx + 2 + swing, hy + 6),
+            (hx + 2 + swing, hy + 4), (hx + 1, hy + 2)]
+    c.px(RAMPS["brass"][3], *loop)
+    c.px(RAMPS["brass"][1], loop[3], loop[6])
+    c.px(RAMPS["shell"][2], (hx + swing, hy + 9), (hx + swing, hy + 10), (hx + swing - 1, hy + 10))
+    # front arm on the walking stick
+    c.draw(K.capsule((31, 37), (33.5, 62), 1.2), "wood", "stick")
+    c.draw(K.capsule((22, 28), (30, 37), 2.4, 2.0), "belt", "arm_front")
+    c.draw(K.ellipse(30.5, 37.5, 2.2, 2.0), "skin", "hand")
+    return c.image().transpose(Image.FLIP_LEFT_RIGHT)
+
+
 OBJECTS = {
     "checkpoint": [checkpoint(False), checkpoint(True)],
     "goal": [goal(0), goal(1)],
     "chest": [chest(False), chest(True)],
     "wallet": [wallet()],
+    "npc": [elder(0), elder(1)],
 }
+
+
+# --------------------------------------------------------------------------
+# Pickups (items/<name>/<n>.png)
+# --------------------------------------------------------------------------
+
+def bead(turn):
+    """Golden tesbih bead turning on its string: turn 0-3 moves the string hole
+    across the front; a short string end sticks out on both sides."""
+    K = Kit(16, 16)
+    c = K.canvas()
+    c.draw(K.box(1, 7, 14, 8), "belt", "string")
+    c.draw(K.ellipse(8, 8, 5.6, 5.4), "brass", "bead")
+    hole_x = (5, 7, 9, 11)[turn]
+    c.px(RAMPS["brass"][0], (hole_x, 7), (hole_x, 8))
+    if turn in (0, 2):  # glint
+        c.px((255, 250, 220), (6, 4), (5, 5))
+    else:
+        c.px((255, 250, 220), (7, 4))
+    return c.image()
+
+
+ITEMS = {"bead": [bead(t) for t in range(4)]}
 
 
 # --------------------------------------------------------------------------
@@ -386,7 +526,7 @@ def preview():
     for name, frames in ENEMIES.items():
         items += [(f"{name}/{i}", f) for i, f in enumerate(frames)]
     items += [(name, img) for name, img in DECOR.items()]
-    for name, frames in OBJECTS.items():
+    for name, frames in {**OBJECTS, **ITEMS}.items():
         items += [(f"{name}/{i}", f) for i, f in enumerate(frames)]
     pad, row_h, width = 10, 150, 760
     x, y, rows = pad, pad, [[]]
@@ -417,8 +557,11 @@ if __name__ == "__main__":
         img.save(decor_dir / f"{name}.png")
     for name, frames in OBJECTS.items():
         save_frames(ROOT / "objects" / name, frames)
+    for name, frames in ITEMS.items():
+        save_frames(ROOT / "items" / name, frames)
     for name, img in TILES.items():
         img.save(ROOT / "tiles" / f"{name}.png")
     preview().save(OUT / "props_preview.png")
     print("enemies:", sum(len(f) for f in ENEMIES.values()), "frames; decor:", len(DECOR),
-          "; objects:", sum(len(f) for f in OBJECTS.values()), "frames")
+          "; objects:", sum(len(f) for f in OBJECTS.values()), "frames; items:",
+          sum(len(f) for f in ITEMS.values()), "frames")
