@@ -7,7 +7,7 @@ Change a script and run it again to rebuild every frame.
 | Script | Writes |
 | --- | --- |
 | `art/hero/hero_sprite.py` | `player/hero/<animation>/<n>.png`, `player/hero/anim.json`, `effects/muzzle_flash/` |
-| `art/props/props_sprite.py` | `enemies/`, `decor/`, `objects/`, `tiles/4.png` (cloud), `tiles/brick.png` |
+| `art/props/props_sprite.py` | `enemies/`, `decor/`, `objects/` (also the old man, `objects/npc/`), `items/bead/`, `tiles/4.png` (cloud), `tiles/brick.png` |
 
 ```
 python art/hero/hero_sprite.py
@@ -34,5 +34,9 @@ frame anchor and the standing/ducking hitbox sizes read by `player.py`.
 
 Enemies keep neutral code names so the lore can change without renaming
 files: `walker` is drawn as a goose, `turtle` as a tortoise (walk, shell and
-spinning shell). Decor images in `decor/` show up in the map editor's
-Dekor tab automatically; a new `decor/<name>.png` needs no code change.
+spinning shell), `goblin` as a goblin with long yellow hair, a long warty
+nose and a pointed ear (walk and run, 32x44). The NPC is `npc`: an old man
+with a flat cap, white beard, walking stick and tesbih, saved facing left.
+The bead (`items/bead/`) is a golden tesbih bead turning on its string.
+Decor images in `decor/` show up in the map editor's Dekor tab
+automatically; a new `decor/<name>.png` needs no code change.

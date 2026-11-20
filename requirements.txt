@@ -1,0 +1,3 @@
+# The game and its tests. pygame-ce provides the `pygame` module and has wheels
+# for current Python versions (3.14 included); do not install it next to pygame.
+pygame-ce==2.5.8
