@@ -2,6 +2,8 @@
 .idea
 __pycache__
 test_*.py
+# ...except the committed test suite (python -m unittest discover tests)
+!tests/test_*.py
 art/hero/out/
 art/props/out/
 .venv/
