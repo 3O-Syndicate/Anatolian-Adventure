@@ -79,6 +79,22 @@
     {"type": "coin", "x": 61, "y": 8},
     {"type": "coin", "x": 62, "y": 8},
     {"type": "tunnel", "x": 20, "y": 16, "pair": 1},
-    {"type": "tunnel", "x": 66, "y": 16, "pair": 1}
+    {"type": "tunnel", "x": 66, "y": 16, "pair": 1},
+    {"type": "bead", "x": 8, "y": 15},
+    {"type": "bead", "x": 14, "y": 10},
+    {"type": "bead", "x": 42, "y": 9},
+    {"type": "bead", "x": 53, "y": 12},
+    {"type": "bead", "x": 60, "y": 7},
+    {"type": "bead", "x": 78, "y": 15},
+    {"type": "bead", "x": 85, "y": 14},
+    {"type": "bead", "x": 92, "y": 15},
+    {"type": "bead", "x": 100, "y": 10},
+    {"type": "bead", "x": 106, "y": 15},
+    {"type": "bead", "x": 109, "y": 14},
+    {"type": "bead", "x": 31, "y": 13},
+    {"type": "bead", "x": 71, "y": 13},
+    {"type": "goblin", "x": 40, "y": 16, "dir": -1},
+    {"type": "goblin", "x": 79, "y": 16, "dir": -1},
+    {"type": "goblin", "x": 104, "y": 16, "dir": -1}
   ]
 }

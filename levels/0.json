@@ -111,6 +111,22 @@
     {"type": "hint", "x": 7, "y": 25, "text": "Sandığa dokun, aç. Asidi Q ile dök"},
     {"type": "hint", "x": 24, "y": 32, "text": "Kalabalık mı? Asit dök ya da kabuk tekmele"},
     {"type": "hint", "x": 41, "y": 25, "text": "Koşarak atla: boşluğu geç"},
-    {"type": "hint", "x": 56, "y": 25, "text": "Tünelde S: yukarı dön"}
+    {"type": "hint", "x": 56, "y": 25, "text": "Tünelde S: yukarı dön"},
+    {"type": "hint", "x": 36, "y": 17, "text": "Altın boncukları topla: dede 33 tane istiyor"},
+    {"type": "hint", "x": 62, "y": 17, "text": "Goblin seni görünce koşar: üstüne zıpla ya da iki kez vur"},
+    {"type": "goblin", "x": 70, "y": 17, "dir": -1},
+    {"type": "bead", "x": 39, "y": 15},
+    {"type": "bead", "x": 10, "y": 15},
+    {"type": "bead", "x": 25, "y": 11},
+    {"type": "bead", "x": 38, "y": 9},
+    {"type": "bead", "x": 46, "y": 7},
+    {"type": "bead", "x": 61, "y": 9},
+    {"type": "bead", "x": 85, "y": 14},
+    {"type": "bead", "x": 95, "y": 15},
+    {"type": "bead", "x": 12, "y": 24},
+    {"type": "bead", "x": 32, "y": 30},
+    {"type": "bead", "x": 52, "y": 31},
+    {"type": "bead", "x": 60, "y": 24},
+    {"type": "bead", "x": 72, "y": 31}
   ]
 }
