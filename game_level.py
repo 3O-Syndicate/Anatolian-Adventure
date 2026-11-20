@@ -162,6 +162,7 @@ class GameLevel:
         are rendered once here, then blitted while scrolling.
         """
         level = level_format.load_for_game(level_num)
+        self.terrain_rows = level["terrain"]
         size = (level["width"] * TILESIZE, level["height"] * TILESIZE)
         self.background = tuple(level["background"])
         self.floor = pygame.Surface(size, pygame.SRCALPHA)
@@ -305,12 +306,22 @@ class GameLevel:
                 return True
         return False
 
+    def solid_at_pixel(self, x, y):
+        col, row = x // TILESIZE, y // TILESIZE
+        return (0 <= row < len(self.terrain_rows) and 0 <= col < len(self.terrain_rows[row])
+                and self.terrain_rows[row][col] != level_format.EMPTY)
+
+    def camera_target(self):
+        target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)
+        target.y = min(target.y, self.floor.get_height() - HEIGHT)
+        return target
+
     def snap_camera(self):
         """Centre the view on the player at once (after a teleport or respawn)."""
-        self.offset.update(pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2))
+        self.offset.update(self.camera_target())
 
     def update_camera(self):
-        target = pygame.Vector2(G.player.rect.center) - (WIDTH // 2, HEIGHT // 2)
+        target = self.camera_target()
         self.offset += (target - self.offset) * 0.05
         if self.shake_timer > 0:
             import random
@@ -325,6 +336,7 @@ class GameLevel:
     def draw(self):
         G.screen.fill(self.background)
         draw_offset = self.offset + self.shake_offset
+        draw_offset.y = min(draw_offset.y, self.floor.get_height() - HEIGHT)
         if self.decor_back is not None:
             G.screen.blit(self.decor_back, -draw_offset)
         G.screen.blit(self.floor, -draw_offset)

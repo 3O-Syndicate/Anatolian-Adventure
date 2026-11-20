@@ -118,6 +118,15 @@ class WalkingEnemy(pygame.sprite.Sprite):
         self.previous_rect = self.rect.copy()
         self.position.x += self.direction * self.speed
         self.rect.x = round(self.position.x)
+        level = G.game_level
+        if level is not None and self.speed and self.velocity_y == 0:
+            front = self.rect.right - 1 if self.direction > 0 else self.rect.left
+            feet = self.rect.bottom
+            if (level.solid_at_pixel(self.previous_rect.centerx, feet)
+                    and not level.solid_at_pixel(front, feet)):
+                self.rect.x = self.previous_rect.x
+                self.position.x = self.rect.x
+                self.direction *= -1
         walls = pygame.sprite.spritecollide(self, G.obstacles_group, False)
         if walls:
             if self.direction > 0:
@@ -136,7 +145,7 @@ class WalkingEnemy(pygame.sprite.Sprite):
             self.position.y = self.rect.y
             self.velocity_y = 0
 
-        # Enemies walk off ledges, as in SMB, and disappear below the map.
+        # An enemy spawned over empty space can still fall out of the map.
         if G.game_level is not None and self.rect.top > G.game_level.floor.get_height():
             self.kill()
         self.animate()

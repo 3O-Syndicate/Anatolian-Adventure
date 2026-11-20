@@ -14,6 +14,35 @@ import save
 from cage import Cage
 
 
+class BandWipe:
+    """Cover the outgoing frame in five strips, then uncover the incoming frame."""
+
+    def __init__(self, screen, opening_only=False):
+        self.outgoing = None if opening_only else screen.copy()
+        self.incoming = None
+        self.elapsed = 0
+
+    def draw(self, screen, dt):
+        if self.incoming is None:
+            self.incoming = screen.copy()
+        width, height = screen.get_size()
+        duration = 300  # milliseconds per phase
+        closing = self.outgoing is not None and self.elapsed < duration
+        phase_time = self.elapsed if closing or self.outgoing is None else self.elapsed - duration
+        fraction = min(1, phase_time / duration)
+        screen.blit(self.outgoing if closing else self.incoming, (0, 0))
+        for band in range(5):
+            top = band * height // 5
+            bottom = (band + 1) * height // 5
+            edge = top + round((bottom - top) * fraction)
+            rect = (0, top, width, edge - top) if closing else (0, edge, width, bottom - edge)
+            screen.fill(BLACK, rect)
+        self.elapsed += dt
+        if closing:
+            self.elapsed = min(self.elapsed, duration)
+        return not closing and fraction == 1
+
+
 def create_game_objects(font):
     game_level = GameLevel(game_stats["current_level"])
     G.game_level = game_level
@@ -84,12 +113,15 @@ def main():
     game_finished = False  # the last level's goal was reached
     in_menu = saved is not None  # "continue or new game?" before anything is built
     game_level = player = ui = None
+    wipe = None
     level_start = save.snapshot(game_stats)  # stats a retry after game over returns to
 
-    def start_level(level_num):
+    def start_level(level_num, opening_only=False):
         """Build a level with the stats the player has now; this is the save point."""
-        nonlocal game_level, player, ui, level_start
+        nonlocal game_level, player, ui, level_start, wipe
+        wipe = BandWipe(G.screen, opening_only)
         game_level, player, ui = reset_for_new_game(font, level_num, keep_score=True)
+        game_level.snap_camera()
         level_start = save.snapshot(game_stats)
         if not test_run:
             save.write(level_start)
@@ -99,7 +131,7 @@ def main():
         start_level(0)
 
     if not in_menu:
-        start_level(game_stats["current_level"])
+        start_level(game_stats["current_level"], opening_only=True)
 
     def display_start_menu():
         G.screen.fill(BLACK)
@@ -162,6 +194,8 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if wipe is not None:
+                continue
             if event.type == pygame.KEYDOWN and in_menu:
                 if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                     save.apply(saved, game_stats)
@@ -172,6 +206,8 @@ def main():
                     start_new_game()
                     in_menu = False
             elif event.type == pygame.KEYDOWN:
+                if game_active and game_level.level_completed:
+                    continue
                 if game_active and not game_paused and player.is_caged and (event.key == pygame.K_e or event.key == pygame.K_SPACE):
                     if player.cage and not player.cage.is_broken:
                         player.cage.break_open()
@@ -197,37 +233,47 @@ def main():
                     game_finished = False
                     assets.play_bgm()
 
-        if in_menu:
+        if wipe is not None and wipe.incoming is not None:
+            pass  # The wipe draws its frozen frames below.
+        elif in_menu:
             display_start_menu()
         elif game_active:
-            if not game_paused:
-                if player.health > 0:
-                    G.all_sprites_group.update()
-                    resolve_enemy_collisions()
-                    player.check_enemy_collisions()
-                    game_level.update_camera()
-
-                    if game_level.level_completed:
-                        game_level.level_clear_timer += 1
-                        if game_level.level_clear_timer > 90:
-                            next_lvl = game_stats["current_level"] + 1
-                            if has_level(next_lvl):
-                                start_level(next_lvl)
-                            else:
-                                game_active = False
-                                game_finished = True
-                                if not test_run:
-                                    save.clear()  # finished: the next launch starts a new game
-                                try:
-                                    pygame.mixer.music.fadeout(800)
-                                except Exception:
-                                    pass
+            if not game_paused and wipe is None:
+                if game_level.level_completed:
+                    game_level.level_clear_timer += 1
+                    if game_level.level_clear_timer >= 90:
+                        next_lvl = game_stats["current_level"] + 1
+                        if has_level(next_lvl):
+                            start_level(next_lvl)
+                        else:
+                            wipe = BandWipe(G.screen)
+                            game_active = False
+                            game_finished = True
+                            if not test_run:
+                                save.clear()
+                            try:
+                                pygame.mixer.music.fadeout(800)
+                            except pygame.error:
+                                pass
+                elif player.health > 0:
+                    for sprite in G.all_sprites_group.sprites():
+                        sprite.update()
+                        if game_level.level_completed:
+                            break
+                    if not game_level.level_completed:
+                        if player.entered_tunnel:
+                            wipe = BandWipe(G.screen)
+                        resolve_enemy_collisions()
+                        player.check_enemy_collisions()
+                        game_level.update_camera()
                 else:
                     player.update()  # death animation; the world waits for it
                 if player.death_finished and game_level.last_checkpoint is not None:
+                    wipe = BandWipe(G.screen)
                     player.respawn(game_level.last_checkpoint.rect.midbottom)
                     game_level.snap_camera()
                 elif player.death_finished:
+                    wipe = BandWipe(G.screen)
                     game_active = False
                     try:
                         pygame.mixer.music.fadeout(800)
@@ -244,6 +290,8 @@ def main():
                 display_end_screen()
         else:
             display_end_screen()
+        if wipe is not None and wipe.draw(G.screen, clock.get_time()):
+            wipe = None
         pygame.display.set_caption(
             f"Anatolian Adventure | FPS: {clock.get_fps():.0f} | Skor: {game_stats['score']}"
         )

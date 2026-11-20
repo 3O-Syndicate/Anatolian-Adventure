@@ -69,6 +69,35 @@ class LevelTestCase(unittest.TestCase):
             self.player.check_enemy_collisions()
 
 
+class PitTest(LevelTestCase):
+    def test_camera_stops_at_map_bottom(self):
+        from settings import HEIGHT
+        level = self.game_level
+        bottom = level.floor.get_height()
+        self.player.rect.centery = bottom + HEIGHT
+        level.snap_camera()
+        self.assertEqual(level.offset.y + HEIGHT, bottom)
+        level.offset.y -= 100
+        for _ in range(180):
+            level.update_camera()
+        self.assertAlmostEqual(level.offset.y + HEIGHT, bottom, places=1)
+        self.assertLessEqual(level.offset.y + HEIGHT, bottom)
+
+    def test_enemies_stop_at_first_pit(self):
+        from enemy import WalkingEnemy, TurtleEnemy, GoblinEnemy
+        rows = self.game_level.terrain_rows
+        gap = rows[-1].index(".")
+        floor = next(y for y, row in enumerate(rows) if row[gap - 1] != ".")
+        self.put_player(gap + 2, floor)  # lure the goblin across the gap
+        for kind in (WalkingEnemy, TurtleEnemy, GoblinEnemy):
+            with self.subTest(kind=kind.__name__):
+                enemy = kind(((gap - 2) * TILESIZE, (floor - 1) * TILESIZE), direction=1)
+                for _ in range(50):
+                    enemy.update()
+                    self.assertLessEqual(enemy.rect.right, gap * TILESIZE)
+                    self.assertEqual(enemy.rect.bottom, floor * TILESIZE)
+
+
 class GoblinTest(LevelTestCase):
     def goblin(self, tiles_away, direction=-1):
         from enemy import GoblinEnemy
@@ -79,7 +108,8 @@ class GoblinTest(LevelTestCase):
         super().setUp()
         for enemy in list(G.enemy_group):
             enemy.kill()  # only the goblins made by the tests
-        self.put_player(5, 17)
+        spawn_x, spawn_y = self.game_level.player_spawn
+        self.put_player(spawn_x // TILESIZE, spawn_y // TILESIZE + 1)
 
     def test_stands_on_its_spawn_floor(self):
         goblin = self.goblin(8)

@@ -78,6 +78,7 @@ class Player(pygame.sprite.Sprite):
         self.fell_in_pit = False
         self.down_was_pressed = False  # S held while the game starts must not crash the tunnel check
         self.tunnel_requested = False
+        self.entered_tunnel = False
         self.direction = 1 # 0 = left, 1 = right
         self.is_ducking = False
 
@@ -529,7 +530,7 @@ class Player(pygame.sprite.Sprite):
                     G.create_floating_text("Cüzdan: +5 altın", (wallet.rect.centerx, wallet.rect.top - 12),
                                            (255, 223, 91), duration=90)
 
-        # Goal
+    def reached_goal(self):
         goal = getattr(G.game_level, "goal", None)
         if goal and not getattr(G.game_level, "level_completed", False):
             if self.base_player_rect.colliderect(goal.rect):
@@ -538,9 +539,8 @@ class Player(pygame.sprite.Sprite):
                 game_stats["score"] += 1000
                 if getattr(G, "create_floating_text", None):
                     G.create_floating_text("Bölüm sonu! +1000", (goal.rect.centerx, goal.rect.top - 16), (255, 215, 0))
-                if G.game_level:
-                    G.game_level.shake_timer = 12
-                    G.game_level.shake_amount = 4
+                return True
+        return False
 
     def respawn(self, feet):
         """Stand up again at a checkpoint: full health, same ammo, a short grace period.
@@ -583,6 +583,7 @@ class Player(pygame.sprite.Sprite):
         self.animate()
 
     def update(self):
+        self.entered_tunnel = False
         if self.health <= 0:
             self.update_death()
             return
@@ -594,14 +595,19 @@ class Player(pygame.sprite.Sprite):
             return
 
         self.check_level_objects()
+        if self.reached_goal():
+            return
         for timer in ("shot_timer", "land_timer", "hurt_timer"):
             if getattr(self, timer) > 0:
                 setattr(self, timer, getattr(self, timer) - 1)
         self.check_reload()
         self.player_input()
         self.move()
+        if self.reached_goal():
+            self.place_image()
+            return
         if self.tunnel_requested and G.game_level is not None:
-            G.game_level.try_enter_tunnel(self)
+            self.entered_tunnel = G.game_level.try_enter_tunnel(self)
         if self.shoot_cooldown > 0: self.shoot_cooldown -= 1
         fired = self.shoot()
         self.animate(restart=fired and self.anim_name in ("shoot", "duck_shoot"))
