@@ -14,6 +14,8 @@ Mouse
 Keys
   1 2 3           Zemin / Dekor / Nesne tabs
   B  R            brush / rectangle (rectangle fills terrain)
+  M / Ctrl+A      select a region by dragging / select the whole map
+  Ctrl+X / Ctrl+V cut all layers / paste once with the pointer at the top-left
   L               decor layer: back (behind terrain) / front (over the player)
   G               grid on/off
   arrows          move the view
@@ -170,6 +172,7 @@ class Editor:
         self.undo_stack, self.redo_stack = [], []
         self.stroke = self.stroke_before = self.rect_start = self.last_cell = None
         self.pan_from = None
+        self.selection = self.selection_anchor = self.clipboard = None
         self.quit_armed = False
         world_h = self.level["height"] * TILESIZE
         self.offset = pygame.Vector2(0, max(0, world_h - SCREEN_H))  # start at the bottom-left
@@ -224,10 +227,10 @@ class Editor:
 
     # --- history ------------------------------------------------------------
 
-    def remember(self, before):
+    def remember(self, before, clipboard):
         """Record the level as it was before an edit, if the edit changed anything."""
         if before != self.level:
-            self.undo_stack.append(before)
+            self.undo_stack.append((before, clipboard))
             del self.undo_stack[:-100]
             self.redo_stack.clear()
             self.dirty = True
@@ -236,22 +239,25 @@ class Editor:
         """Run a one-shot edit as a single undo step."""
         self.finish_stroke()
         before = copy.deepcopy(self.level)
+        clipboard = self.clipboard
         action()
-        self.remember(before)
+        self.remember(before, clipboard)
 
     def undo(self):
         self.finish_stroke()
         if self.undo_stack:
-            self.redo_stack.append(self.level)
-            self.level = self.undo_stack.pop()
+            self.selection = self.selection_anchor = None
+            self.redo_stack.append((self.level, self.clipboard))
+            self.level, self.clipboard = self.undo_stack.pop()
             self.dirty = True
             self.message = "Geri alındı"
 
     def redo(self):
         self.finish_stroke()
         if self.redo_stack:
-            self.undo_stack.append(self.level)
-            self.level = self.redo_stack.pop()
+            self.selection = self.selection_anchor = None
+            self.undo_stack.append((self.level, self.clipboard))
+            self.level, self.clipboard = self.redo_stack.pop()
             self.dirty = True
             self.message = "Yinelendi"
 
@@ -283,6 +289,55 @@ class Editor:
 
     # --- editing ------------------------------------------------------------
 
+    def select_to(self, cell):
+        x, y = self.selection_anchor
+        self.selection = pygame.Rect(min(x, cell[0]), min(y, cell[1]),
+                                     abs(x - cell[0]) + 1, abs(y - cell[1]) + 1)
+
+    def cut_region(self):
+        region = self.selection
+        if region is None or self.tool != "select":
+            self.message = "Önce M ile bir alan seç"
+            return
+        rows = self.level["terrain"][region.top:region.bottom]
+        contents = {"terrain": [row[region.left:region.right] for row in rows]}
+        for layer in ("decor", "entities"):
+            contents[layer] = [dict(item, x=item["x"] - region.x, y=item["y"] - region.y)
+                               for item in self.level[layer] if region.collidepoint(item["x"], item["y"])]
+        self.change(lambda: self.replace_region(region, {"terrain": ["." * region.w] * region.h,
+                                                         "decor": [], "entities": []}))
+        self.clipboard = contents
+        self.selection = self.selection_anchor = None
+        self.message = "Kesildi. Sol üst köşeyi göster ve Ctrl+V ile yapıştır."
+
+    def replace_region(self, region, contents):
+        for y, strip in enumerate(contents["terrain"], region.y):
+            row = self.level["terrain"][y]
+            self.level["terrain"][y] = row[:region.x] + strip + row[region.right:]
+        for layer in ("decor", "entities"):
+            items = self.level[layer]
+            items[:] = [item for item in items if not region.collidepoint(item["x"], item["y"])]
+            for item in contents[layer]:
+                if layer == "entities" and level_format.ENTITY_TYPES[item["type"]][1] == "one":
+                    items[:] = [other for other in items if other["type"] != item["type"]]
+                items.append(dict(item, x=item["x"] + region.x, y=item["y"] + region.y))
+
+    def paste_region(self, cell):
+        if not self.clipboard:
+            self.message = "Önce bir alan kes (Ctrl+X)"
+            return
+        rows = self.clipboard["terrain"]
+        bounds = pygame.Rect(0, 0, self.level["width"], self.level["height"])
+        region = pygame.Rect(cell, (len(rows[0]), len(rows))) if cell is not None else None
+        if region is None or not bounds.contains(region):
+            self.message = "Alan sığmıyor. Haritayı büyüt veya başka bir hücre seç."
+            return
+        self.change(lambda: self.replace_region(region, self.clipboard))
+        self.tool = "select"
+        self.selection = region
+        self.selection_anchor = self.clipboard = None
+        self.message = "Alan yapıştırıldı"
+
     def set_tile(self, col, row, tile_id):
         line = self.level["terrain"][row]
         char = level_format.tile_char(tile_id)
@@ -304,11 +359,26 @@ class Editor:
             self.level["decor"].append(item)
             self.dirty = True
 
+    def fill_wall(self, a, b, erase):
+        left, right = sorted((a[0], b[0]))
+        top, bottom = sorted((a[1], b[1]))
+        decor = self.level["decor"]
+        if erase:
+            decor[:] = [d for d in decor if not (
+                d["id"] == level_format.BRICK_WALL and d.get("layer", "back") == "back"
+                and left <= d["x"] <= right and top <= d["y"] <= bottom)]
+        else:
+            existing = {(d["x"], d["y"]) for d in decor
+                        if d["id"] == level_format.BRICK_WALL and d.get("layer", "back") == "back"}
+            decor.extend({"id": level_format.BRICK_WALL, "layer": "back", "x": x, "y": y}
+                         for y in range(top, bottom + 1) for x in range(left, right + 1)
+                         if (x, y) not in existing)
+
     def erase_decor(self, col, row):
         """Remove the top decor of the current layer covering this tile."""
         point = ((col + 0.5) * TILESIZE, (row + 0.5) * TILESIZE)
-        for item in reversed(self.level["decor"]):
-            if item.get("layer", "back") == self.decor_layer and self.art.decor_rect(item).collidepoint(point):
+        for item in reversed(level_format.decor_in_draw_order(self.level, self.decor_layer)):
+            if self.art.decor_rect(item).collidepoint(point):
                 self.level["decor"].remove(item)
                 self.dirty = True
                 return
@@ -370,7 +440,8 @@ class Editor:
                 self.selected["terrain"] = tile_id
         elif self.tab == "decor":
             point = ((col + 0.5) * TILESIZE, (row + 0.5) * TILESIZE)
-            for item in reversed(self.level["decor"]):
+            for item in reversed(level_format.decor_in_draw_order(self.level, "back") +
+                                 level_format.decor_in_draw_order(self.level, "front")):
                 if self.art.decor_rect(item).collidepoint(point):
                     self.selected["decor"] = item["id"]
                     self.decor_layer = item.get("layer", "back")
@@ -445,6 +516,7 @@ class Editor:
                              if 0 <= e["x"] < width and 0 <= e["y"] < height]
         level["decor"] = [d for d in level["decor"] if 0 <= d["x"] < width and 0 <= d["y"] < height]
         level["terrain"], level["width"], level["height"] = terrain, width, height
+        self.selection = self.selection_anchor = None
         self.offset.y += d_height * TILESIZE
         self.message = f"Boyut: {width}x{height}"
 
@@ -504,7 +576,16 @@ class Editor:
         cell = self.to_cell(pygame.mouse.get_pos())
         resize = {pygame.K_RIGHT: (1, 0), pygame.K_LEFT: (-1, 0),
                   pygame.K_UP: (0, 1), pygame.K_DOWN: (0, -1)}
-        if event.key == pygame.K_ESCAPE:
+        if ctrl and event.key == pygame.K_a:
+            self.finish_stroke()
+            self.tool = "select"
+            self.selection_anchor = None
+            self.selection = pygame.Rect(0, 0, self.level["width"], self.level["height"])
+        elif ctrl and event.key == pygame.K_x:
+            self.cut_region()
+        elif ctrl and event.key == pygame.K_v:
+            self.paste_region(cell)
+        elif event.key == pygame.K_ESCAPE:
             self.request_quit()
         elif ctrl and event.key == pygame.K_s:
             self.save()
@@ -541,6 +622,8 @@ class Editor:
             self.tool = "brush"
         elif event.key == pygame.K_r:
             self.tool = "rect"
+        elif event.key == pygame.K_m:
+            self.tool = "select"
         elif event.key == pygame.K_l:
             self.decor_layer = "front" if self.decor_layer == "back" else "back"
         elif event.key == pygame.K_g:
@@ -561,12 +644,23 @@ class Editor:
         if event.button not in (1, 3):
             return
         cell = self.to_cell(event.pos)
+        if cell is None:
+            return
         if event.button == 1 and pygame.key.get_mods() & pygame.KMOD_ALT:
             self.pick(cell)
+            return
+        if self.tool == "select":
+            if event.button == 1 and cell is not None:
+                self.selection_anchor = cell
+                self.select_to(cell)
             return
         self.stroke = "paint" if event.button == 1 else "erase"
         self.stroke_before = copy.deepcopy(self.level)
         if self.tool == "rect" and self.tab == "terrain":
+            self.rect_start = cell
+        elif (self.tool == "rect" and self.tab == "decor" and self.decor_layer == "back"
+              and self.selected["decor"] == level_format.BRICK_WALL):
+            self.stroke = "paint_wall" if event.button == 1 else "erase_wall"
             self.rect_start = cell
         elif cell is not None:
             self.apply(cell, first=True)
@@ -582,13 +676,20 @@ class Editor:
 
     def finish_stroke(self, pos=None):
         """Commit a drag before saving, resizing, undoing or switching levels."""
+        if self.selection_anchor is not None:
+            if pos is not None and self.to_cell(pos) is not None:
+                self.select_to(self.to_cell(pos))
+            self.selection_anchor = None
         if self.rect_start is not None:
             end = (self.to_cell(pos) if pos is not None else None) or self.last_cell
             if end is not None:
-                tile = self.selected["terrain"] if self.stroke == "paint" else None
-                self.fill_rect(self.rect_start, end, tile)
+                if self.stroke in ("paint_wall", "erase_wall"):
+                    self.fill_wall(self.rect_start, end, self.stroke == "erase_wall")
+                else:
+                    tile = self.selected["terrain"] if self.stroke == "paint" else None
+                    self.fill_rect(self.rect_start, end, tile)
         if self.stroke_before is not None:
-            self.remember(self.stroke_before)
+            self.remember(self.stroke_before, self.clipboard)
             self.stroke_before = None
         self.rect_start = None
         self.stroke = None
@@ -597,6 +698,11 @@ class Editor:
     def handle_mouse_motion(self, event):
         if self.pan_from is not None:
             self.offset -= pygame.Vector2(event.rel) / self.zoom
+            return
+        if self.selection_anchor is not None:
+            cell = self.to_cell(event.pos)
+            if cell is not None:
+                self.select_to(cell)
             return
         if self.stroke is None:
             return
@@ -662,11 +768,11 @@ class Editor:
                     self.screen.blit(self.art.scaled(("tile", tile_id), image, self.zoom), pos)
 
     def draw_decor(self, layer):
-        for item in self.level["decor"]:
-            if item.get("layer", "back") != layer:
-                continue
+        for item in level_format.decor_in_draw_order(self.level, layer):
             image = self.art.decor.get(item["id"])
             rect = self.screen_rect(self.art.decor_rect(item))
+            if not rect.colliderect(self.screen.get_clip()):
+                continue
             if image is None:
                 pygame.draw.rect(self.screen, (255, 0, 0), rect, 1)
                 continue
@@ -719,11 +825,23 @@ class Editor:
     def draw_cursor(self):
         mouse = pygame.mouse.get_pos()
         cell = self.to_cell(mouse)
+        if self.tool == "select":
+            region = self.selection
+            colour = UI_ACCENT
+            if self.clipboard and cell and region is None:
+                rows = self.clipboard["terrain"]
+                region = pygame.Rect(cell, (len(rows[0]), len(rows)))
+                if region.right > self.level["width"] or region.bottom > self.level["height"]:
+                    colour = (255, 80, 80)
+            if region is not None:
+                world = pygame.Rect(*(n * TILESIZE for n in region))
+                pygame.draw.rect(self.screen, colour, self.screen_rect(world), 3)
+            return
         if self.rect_start is not None and cell is not None:
             a, b = self.rect_start, cell
             world = pygame.Rect(min(a[0], b[0]) * TILESIZE, min(a[1], b[1]) * TILESIZE,
                                 (abs(a[0] - b[0]) + 1) * TILESIZE, (abs(a[1] - b[1]) + 1) * TILESIZE)
-            colour = UI_ACCENT if self.stroke == "paint" else (255, 80, 80)
+            colour = UI_ACCENT if self.stroke in ("paint", "paint_wall") else (255, 80, 80)
             pygame.draw.rect(self.screen, colour, self.screen_rect(world), 2)
             return
         if cell is None:
@@ -825,19 +943,21 @@ class Editor:
             self.screen.blit(name, name.get_rect(midtop=(rect.centerx, rect.bottom + 3)))
             self.hits.append((rect, lambda key=key: self.selected.__setitem__(self.tab, key)))
 
-        y = 446
+        y = 470
         self.text("Araç", (x, y), UI_DIM)
-        self.button(pygame.Rect(x, y + 14, 118, 22), "B Fırça", self.tool == "brush",
+        self.button(pygame.Rect(x, y + 14, 71, 22), "B Fırça", self.tool == "brush",
                     lambda: setattr(self, "tool", "brush"))
-        self.button(pygame.Rect(x + 124, y + 14, 118, 22), "R Dikdörtgen", self.tool == "rect",
+        self.button(pygame.Rect(x + 75, y + 14, 104, 22), "R Dikdörtgen", self.tool == "rect",
                     lambda: setattr(self, "tool", "rect"))
+        self.button(pygame.Rect(x + 183, y + 14, 60, 22), "M Seç", self.tool == "select",
+                    lambda: setattr(self, "tool", "select"))
         self.text("Dekor katmanı", (x, y + 44), UI_DIM)
         self.button(pygame.Rect(x, y + 58, 118, 22), "Arka", self.decor_layer == "back",
                     lambda: setattr(self, "decor_layer", "back"))
         self.button(pygame.Rect(x + 124, y + 58, 118, 22), "L Ön", self.decor_layer == "front",
                     lambda: setattr(self, "decor_layer", "front"))
 
-        y = 538
+        y = 556
         cell_pos = self.to_cell(pygame.mouse.get_pos())
         where = f"{cell_pos[0]}, {cell_pos[1]}" if cell_pos else "-"
         self.text(f"Hücre: {where}   Zoom: {self.zoom}x", (x, y), UI_DIM)
@@ -850,8 +970,12 @@ class Editor:
                       "Ctrl+Z/Y: geri al/yinele",
                       "Ctrl+oklar: boyut", "PgUp/Dn: bölüm / yeni",
                       "Ctrl+S: kaydet  Esc: çık"]
+        if self.tool == "select":
+            help_lines = ["Sol sürükle: alan seç", "Ctrl+A: tüm haritayı seç",
+                          "Ctrl+X: kes  Ctrl+V: yapıştır", "Ctrl+oklar: boyut",
+                          "Ctrl+Z/Y: geri al/yinele", "B: fırça  Ctrl+S: kaydet"]
         for i, line in enumerate(help_lines):
-            self.text(line, (x, SCREEN_H - 126 + i * 12), UI_DIM)
+            self.text(line, (x, SCREEN_H - 110 + i * 11), UI_DIM)
 
     @staticmethod
     def wrap(message, width):

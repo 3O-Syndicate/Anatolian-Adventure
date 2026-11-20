@@ -243,7 +243,7 @@ class GameLevel:
 
     def render_decor(self, level, layer, size):
         """One decor layer drawn onto a transparent surface; None when it is empty."""
-        items = [d for d in level["decor"] if d.get("layer", "back") == layer]
+        items = level_format.decor_in_draw_order(level, layer)
         if not items:
             return None
         surface = pygame.Surface(size, pygame.SRCALPHA)

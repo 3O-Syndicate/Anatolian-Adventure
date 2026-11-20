@@ -37,6 +37,10 @@ The right panel has three tabs: **Zemin** (terrain), **Dekor** (decor) and
 | Wheel | Zoom (0.5x, 1x, 2x) |
 | `1` `2` `3` | Terrain / decor / object tab |
 | `B` / `R` | Brush / rectangle (rectangle fills terrain) |
+| `2` → brickwall → Arka → `R` | Left-drag to fill a tunnel backdrop. Right-drag to remove bricks in a rectangle. Bricks sit behind other back-layer decorations and allow the player to walk through. |
+| `M`, then left drag | Select a rectangle across all layers, including objects and decorations anchored inside it |
+| `Ctrl+A` | Select the entire map |
+| `Ctrl+X` / `Ctrl+V` | Cut the selection / paste it once with the destination's top-left tile under the pointer |
 | `L` | Decor layer: back (behind terrain) or front (over the player) |
 | `G` | Grid on/off |
 | Alt + click, or `I` | Pick what is under the cursor |
@@ -49,6 +53,13 @@ The right panel has three tabs: **Zemin** (terrain), **Dekor** (decor) and
 | `F5` | Save and play this level |
 | `Ctrl+S` | Save; problems are listed in the panel |
 | `Esc` | Quit (press twice to drop unsaved changes) |
+
+To shift an entire level ten tiles right, select all and cut. Press
+`Ctrl+Shift+Right` to add ten columns, point at tile (10, 0), then paste.
+The panel shows the tile under the pointer. Paste replaces all layers inside
+the destination rectangle, including empty cells. If the rectangle extends
+past an edge, the cut stays available so you can resize or reposition it.
+Cut, resize and paste each have their own undo step.
 
 Placement rules: one object per tile; the player and the goal move instead
 of duplicating; a new tunnel mouth joins a mouth that has no partner yet,
