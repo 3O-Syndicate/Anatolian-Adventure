@@ -116,6 +116,18 @@ class SaveFileTest(unittest.TestCase):
         save.apply(progress, other)
         self.assertEqual(other, {"current_level": 2, "score": 5, "coins": 1, "beads": 30})
 
+    def test_kimiz_powers_round_trip(self):
+        progress = dict(PROGRESS, powers=["big", "gun"])
+        self.assertTrue(save.write(progress, self.path))
+        self.assertEqual(save.load(self.path, level_exists), progress)
+        stats = {}
+        save.apply(progress, stats)
+        self.assertEqual(stats["powers"], ["big", "gun"])
+        self.assertEqual(save.snapshot(stats)["powers"], ["big", "gun"])
+
+    def test_unknown_power(self):
+        self.assert_rejected({"version": save.VERSION, **PROGRESS, "powers": ["fly"]})
+
 
 if __name__ == "__main__":
     unittest.main()

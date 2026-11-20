@@ -44,6 +44,8 @@ class LevelTestCase(unittest.TestCase):
     def setUp(self):
         import main
         game_stats.update(score=0, coins=0, beads=0)
+        game_stats.pop("powers", None)
+        game_stats.pop("shop_upgrades", None)
         self.game_level, self.player, self.ui = main.reset_for_new_game(FONT, self.level, keep_score=True)
         self.player.is_caged = False  # skip the start cage
         self.player.invulnerable_timer = 10_000
@@ -232,5 +234,186 @@ class OldManTest(LevelTestCase):
         self.assertTrue(self.game_level.level_completed)
 
 
+class KimizBase(LevelTestCase):
+    """Level 1 a few tiles right of the start cage, without its enemies and items."""
+
+    def setUp(self):
+        super().setUp()
+        for sprite in [*G.enemy_group, *G.items_group]:
+            sprite.kill()  # only the bowls and geese made by the tests
+        spawn_x, spawn_y = self.game_level.player_spawn
+        # a few tiles right of the start cage, which turns walking enemies round
+        self.put_player(spawn_x // TILESIZE + 5, spawn_y // TILESIZE + 1)
+
+    def tearDown(self):
+        game_stats.pop("powers", None)
+
+    def drink(self, power):
+        from item import Item
+        bowl = Item(self.player.base_player_rect.center, "kimiz", power)
+        self.step()
+        self.assertFalse(bowl.alive())
+
+
+class KimizTest(KimizBase):
+    def test_one_bowl_in_levels_1_and_2(self):
+        import level_format
+        for level, power in ((1, "big"), (2, "gun")):
+            bowls = [e for e in level_format.load_level(f"levels/{level}.json")["entities"]
+                     if e["type"] == "kimiz"]
+            self.assertEqual([b["power"] for b in bowls], [power], f"level {level}")
+
+    def test_starts_small_without_a_gun(self):
+        from player import hero_frames
+        p = self.player
+        self.assertFalse(p.has_gun)
+        self.assertFalse(p.is_big)
+        self.assertEqual(p.base_player_rect.size, (24, 56))
+        unarmed, _ = hero_frames(False, 1.0)
+        self.assertIn(p.image, unarmed[p.anim_name], "drawn from the gunless frames")
+
+    def test_grows_with_the_effect_then_stays_big(self):
+        from player import GROW_TICKS
+        p = self.player
+        feet = p.base_player_rect.midbottom
+        self.drink("big")
+        self.assertGreater(p.grow_timer, 0)
+        self.assertEqual(game_stats["score"], 1000)
+        self.step(GROW_TICKS + 2)
+        self.assertEqual(p.grow_timer, 0)
+        self.assertTrue(p.is_big)
+        self.assertEqual(p.base_player_rect.size, (36, 84))
+        self.assertEqual(p.base_player_rect.midbottom, feet, "grows upwards from the feet")
+        self.assertEqual(p.image.get_height(), 96)
+        self.assertEqual(game_stats["powers"], ["big"])
+
+    def test_a_hit_while_big_only_shrinks(self):
+        from enemy import WalkingEnemy
+        from player import GROW_TICKS
+        p = self.player
+        self.drink("big")
+        self.step(GROW_TICKS + 2)
+        p.invulnerable_timer = 0
+        x, floor = self.feet()
+        goose = WalkingEnemy(((x + 1) * TILESIZE, (floor - 1) * TILESIZE), -1)
+        goose.direction = -1  # walk straight into the player
+        goose.position.x = goose.rect.x = p.base_player_rect.right + 2
+        for _ in range(30):
+            self.step()
+            if not p.is_big:
+                break
+        self.assertFalse(p.is_big)
+        self.assertEqual(p.health, 100)
+        self.assertEqual(p.base_player_rect.size, (24, 56))
+        self.assertNotIn("big", game_stats.get("powers", []))
+        self.assertGreater(p.invulnerable_timer, 0)
+        self.assertTrue(goose.alive())
+
+    def test_gun_bowl_gives_the_shotgun(self):
+        from player import hero_frames
+        p = self.player
+        self.drink("gun")
+        self.assertTrue(p.has_gun)
+        p.invulnerable_timer = 0  # no blinking copy of the frame
+        self.step()
+        armed, _ = hero_frames(True, 1.0)
+        self.assertIn(p.image, armed[p.anim_name])
+        p.is_shooting = True
+        self.assertTrue(p.shoot())
+
+    def test_respawn_is_small(self):
+        from player import GROW_TICKS
+        self.drink("big")
+        self.step(GROW_TICKS + 2)
+        checkpoint = self.game_level.checkpoints[0]
+        self.player.respawn(checkpoint.rect.midbottom)
+        self.assertFalse(self.player.is_big)
+        self.assertNotIn("big", game_stats.get("powers", []))
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class LittleTouchesTest(KimizBase):
+    def make_big(self):
+        from player import GROW_TICKS
+        self.drink("big")
+        self.step(GROW_TICKS + 2)
+        self.player.invulnerable_timer = 10_000
+
+    def test_big_head_breaks_a_brick_small_head_does_not(self):
+        rows = self.game_level.terrain_rows
+        # the floating bricks at (29..33, 25) over the start floor (top row 29)
+        self.assertEqual(rows[25][30], "3")
+        for big in (False, True):
+            with self.subTest(big=big):
+                if big:
+                    self.make_big()
+                self.put_player(30, 29)
+                self.player.velocity_y = -20
+                self.player.on_ground = False
+                bricks = len(G.obstacles_group)
+                for _ in range(12):
+                    self.player.move()
+                broken = len(G.obstacles_group) < bricks
+                self.assertEqual(broken, big)
+                self.assertEqual(rows[25][30] == ".", big)
+
+    def test_goose_leaves_feathers(self):
+        from effects import Feather
+        from enemy import WalkingEnemy
+        x, floor = self.feet()
+        goose = WalkingEnemy(((x + 3) * TILESIZE, (floor - 1) * TILESIZE), -1)
+        goose.on_stomp(self.player)
+        self.assertTrue(any(isinstance(s, Feather) for s in G.all_sprites_group))
+
+    def test_victory_pose_after_the_goal(self):
+        p = self.player
+        p.base_player_rect.midbottom = self.game_level.goal.rect.midbottom
+        self.assertTrue(p.reached_goal())
+        for _ in range(30):
+            p.update_victory()
+        self.assertEqual(p.anim_name, "victory")
+
+    def test_neon_sign_mostly_lit(self):
+        from shop import Shop
+        lit = sum(Shop.neon_lit(ms) for ms in range(0, 4000, 10))
+        self.assertTrue(300 < lit < 400)
+
+
+class ShopNeonTest(LevelTestCase):
+    level = 2
+
+    def test_sign_letters_found(self):
+        shop = self.game_level.shop
+        self.assertIsNotNone(shop.neon)
+        self.assertGreater(shop.neon.get_bounding_rect().width, 60, "ERDAL BAKKAL spans the board")
+        self.assertIsNotNone(shop.nazar)
+
+    def test_tesbih_beads_sit_on_the_elder(self):
+        npc = self.game_level.npc
+        for x, y in npc.bead_positions():
+            self.assertTrue(npc.rect.collidepoint(x, y))
+
+
+class NazarTest(KimizBase):
+    def test_bead_blocks_a_hit_and_cracks(self):
+        from effects import Debris
+        from enemy import WalkingEnemy
+        p = self.player
+        p.take_item("armor", p.rect.center)
+        self.assertEqual(p.armor, 1)
+        p.invulnerable_timer = 0
+        x, floor = self.feet()
+        goose = WalkingEnemy(((x + 1) * TILESIZE, (floor - 1) * TILESIZE), -1)
+        goose.direction = -1
+        goose.position.x = goose.rect.x = p.base_player_rect.right + 2
+        for _ in range(30):
+            self.step()
+            if p.armor == 0:
+                break
+        self.assertEqual(p.armor, 0)
+        self.assertEqual(p.health, 100)
+        self.assertTrue(any(isinstance(s, Debris) for s in G.all_sprites_group), "the halves fly off")
+
