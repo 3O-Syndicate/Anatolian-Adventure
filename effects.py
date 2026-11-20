@@ -178,6 +178,20 @@ class Debris(Effect):
         self.rect = self.image.get_rect(center=(round(self.pos.x), round(self.pos.y)))
 
 
+def nazar_crack(center):
+    """The nazar bead that took a hit: its two halves fly apart in a blue flash."""
+    cracked = G.nazar_imgs[2] if G.nazar_imgs and len(G.nazar_imgs) > 2 else None
+    if cracked is not None:
+        bead = pygame.transform.scale_by(cracked, 2)
+        w, h = bead.get_size()
+        for side, area in ((-1, (0, 0, w // 2, h)), (1, (w // 2, 0, w - w // 2, h))):
+            Debris(bead.subsurface(area).copy(), (center[0] + side * w // 4, center[1]),
+                   (side * random.uniform(3, 4.5), -random.uniform(8, 10)))
+    Ring(center, life=22, colour=(120, 190, 240), reach=55)
+    burst(center, 12, 4.5, hearts=0,
+          colours=((120, 190, 240), (255, 255, 255), (36, 88, 146)), life=(18, 30))
+
+
 def brick_debris(texture, tile_rect):
     """Four quarters of a brick tile flying up and out."""
     half = tile_rect.width // 2

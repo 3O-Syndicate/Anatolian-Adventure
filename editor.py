@@ -64,7 +64,7 @@ ENTITY_LABELS = {
     "coin": "Altın", "bead": "Boncuk", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
     "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu", "npc": "Dede (NPC)", "kimiz": "Kımız",
 }
-ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Zırh"}
+ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Nazar"}
 POWER_LABELS = {"big": "Büyüme", "gun": "Tüfek"}
 TERRAIN_LABELS = {0: "Görünmez", 1: "Zemin", 2: "Toprak", 3: "Tuğla", 4: "Bulut"}
 # entities that can be painted by dragging; the rest go down one per click

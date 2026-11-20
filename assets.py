@@ -155,6 +155,12 @@ def load_assets():
 		assets['hero_anims_unarmed'] = {}
 		print("Warning: unarmed hero frames not found; the hero shows his gun.")
 
+	# nazar bead: 0 hangs on the shop door, 1 is the bead, 2 the cracked bead
+	try:
+		assets['nazar_imgs'] = import_folder("effects/nazar")
+	except Exception:
+		assets['nazar_imgs'] = []
+
 	# kimiz bowl power-up frames
 	try:
 		assets['kimiz_imgs'] = import_folder("items/kimiz")
@@ -290,6 +296,7 @@ def load_assets():
 	G.hero_anims = assets['hero_anims']
 	G.hero_anims_unarmed = assets['hero_anims_unarmed']
 	G.kimiz_imgs = assets['kimiz_imgs']
+	G.nazar_imgs = assets['nazar_imgs']
 	G.muzzle_flash_imgs = assets['muzzle_flash_imgs']
 	G.enemy_frames = assets['enemy_frames']
 	G.coin_icon = assets['coin_icon']

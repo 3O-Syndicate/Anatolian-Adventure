@@ -26,6 +26,7 @@ coin_icon = None
 bead_imgs = None     # golden tesbih bead frames (items/bead)
 bead_icon = None
 kimiz_imgs = None    # kimiz bowl power-up frames (items/kimiz)
+nazar_imgs = None    # effects/nazar: on the shop door, the bead, the cracked bead
 bullet_img = None
 
 # Player image

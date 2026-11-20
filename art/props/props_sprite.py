@@ -653,7 +653,25 @@ def nazar():
     return c.image()
 
 
-EFFECTS = {"nazar": [nazar()]}
+def nazar_bead(cracked):
+    """The nazar as a pickup and HUD icon, 13x13: dark blue glass round a white,
+    light blue and black eye. cracked=True splits it with a zig-zag line."""
+    K = Kit(13, 13)
+    c = K.canvas()
+    c.draw(K.ellipse(6.5, 6.5, 5.6, 5.6), "glass", "nazar")
+    d = (K.XX - 6.5) ** 2 + (K.YY - 6.5) ** 2
+    c.rgb[d <= 3.2 ** 2] = (248, 248, 250)
+    c.rgb[d <= 2.2 ** 2] = (120, 190, 240)
+    c.rgb[d <= 1.1 ** 2] = (20, 20, 40)
+    c.px((210, 236, 255), (3, 3), (4, 3), (3, 4))  # glint
+    if cracked:
+        c.px((14, 16, 30), (6, 1), (7, 2), (6, 3), (5, 4), (6, 5), (7, 6), (7, 7),
+             (6, 8), (5, 9), (6, 10), (7, 11))
+    return c.image()
+
+
+# nazar/0: hanging on the shop door; 1: the bead; 2: cracked (the halves fly off)
+EFFECTS = {"nazar": [nazar(), nazar_bead(False), nazar_bead(True)]}
 
 
 # --------------------------------------------------------------------------

@@ -99,11 +99,24 @@ class UI:
         G.screen.blit(text, (24, ammo_y))
 
     def display_items(self):
-        """Armor and acid next to the ammo line, only while the player has some."""
+        """Nazar beads and acid next to the ammo line, only while the player has some."""
         if G.player is None:
             return
         x = 24
-        for count, text, color in ((G.player.armor, "Zırh x{}", (200, 225, 255)),
+        beads = G.player.armor
+        icon = G.nazar_imgs[1] if G.nazar_imgs and len(G.nazar_imgs) > 1 else None
+        if beads > 0 and icon is not None:
+            icon = pygame.transform.scale_by(icon, 2)
+            for i in range(min(beads, 5)):
+                G.screen.blit(icon, (x, 60))
+                x += icon.get_width() + 4
+            if beads > 5:
+                label = self.small_font.render(f"x{beads}", True, (200, 225, 255))
+                G.screen.blit(label, (x, 66))
+                x += label.get_width()
+            x += 14
+            beads = 0
+        for count, text, color in ((beads, "Nazar x{}", (200, 225, 255)),
                                    (G.player.acid, "Asit x{} [Q]", (150, 255, 90))):
             if count > 0:
                 label = text.format(count)

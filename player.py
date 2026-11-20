@@ -15,7 +15,7 @@ import assets
 from settings import *
 from bullet import Bullet
 from acid import AcidPuddle
-from effects import Sparkle, Ring, burst, brick_debris
+from effects import Sparkle, Ring, burst, brick_debris, nazar_crack
 
 
 class MuzzleFlash(pygame.sprite.Sprite):
@@ -148,7 +148,7 @@ class Player(pygame.sprite.Sprite):
         self.reload_duration = 1500
 
         self.health = 100
-        self.armor = 0             # each armor point stops one enemy hit
+        self.armor = 0             # nazar beads: each one stops one enemy hit
         self.acid = 0              # acid flasks, poured with Q
         self.acid_was_pressed = False
         self.is_caged = False
@@ -351,7 +351,34 @@ class Player(pygame.sprite.Sprite):
             image = pygame.transform.scale(image, (max(1, round(w * factor * sx)),
                                                    max(1, round(h * factor * sy))))
         self.drawn_scale = image.get_width() / self.frame_width, image.get_height() / self.frame_width
+        if self.armor > 0 and name != "death":
+            image = image.copy()
+            sx, sy = self.drawn_scale
+            x, y = self.pin_offset(name)
+            if self.direction == 0:
+                x = self.frame_width - x
+            centre = (round(x * sx), round(y * sy))
+            r = max(2, round(2.6 * sx))
+            pygame.draw.circle(image, (40, 24, 28), centre, r + 1)   # the game's outline colour
+            pygame.draw.circle(image, (36, 88, 146), centre, r)
+            pygame.draw.circle(image, (248, 248, 250), centre, max(1, r - 1))
+            pygame.draw.circle(image, (20, 20, 40), centre, max(1, r - 2))
         return image
+
+    # where the nazar bead is pinned on the tank top, in frame pixels facing right
+    PIN = (37, 31)
+    PIN_DROP = {"duck": 11, "duck_shoot": 11, "land": 2}
+
+    def pin_offset(self, name):
+        return self.PIN[0], self.PIN[1] + self.PIN_DROP.get(name, 0)
+
+    def pin_position(self):
+        """World position of the pinned nazar bead in the frame being shown."""
+        sx, sy = getattr(self, "drawn_scale", (1.0, 1.0))
+        x, y = self.pin_offset(self.anim_name)
+        if self.direction == 0:
+            x = self.frame_width - x
+        return (self.rect.left + x * sx, self.rect.top + y * sy)
 
     def play_footstep(self):
         sounds = getattr(G, "footstep_sounds", None)
@@ -519,13 +546,13 @@ class Player(pygame.sprite.Sprite):
         AcidPuddle((front, self.base_player_rect.bottom))
 
     def take_item(self, item, where):
-        """Chest contents: shotgun ammo, armor against one hit, or acid flasks."""
+        """Chest contents: shotgun ammo, a nazar bead against one hit, or acid flasks."""
         if item == "shotgun":
             self.total_ammo += 30
             text = "Tüfek: +30 mermi" if self.has_gun else "+30 mermi (tüfeği bulunca)"
         elif item == "armor":
             self.armor += 1
-            text = "Zırh: bir darbeyi durdurur"
+            text = "Nazar boncuğu: bir darbeyi durdurur"
         elif item == "acid":
             self.acid += 3
             text = "Asit x3: Q ile yere dök"
@@ -537,8 +564,9 @@ class Player(pygame.sprite.Sprite):
             G.create_floating_text(text, where, (255, 235, 140), duration=150)
 
     def lose_armor(self, enemy):
-        """Armor takes the hit: knocked back, then a short grace period."""
+        """A nazar bead takes the hit and cracks: knocked back, then a short grace period."""
         self.armor -= 1
+        nazar_crack(self.pin_position())
         self.invulnerable_timer = 90
         self.hurt_timer = 18
         away = 1 if self.base_player_rect.centerx >= enemy.rect.centerx else -1
@@ -551,8 +579,8 @@ class Player(pygame.sprite.Sprite):
             G.game_level.shake_timer = 10
             G.game_level.shake_amount = 4
         if getattr(G, "create_floating_text", None):
-            G.create_floating_text("Zırh kırıldı!", (self.base_player_rect.centerx, self.rect.top - 8),
-                                   (160, 200, 255), duration=90)
+            G.create_floating_text("Çat! Nazar boncuğu seni korudu", (self.base_player_rect.centerx, self.rect.top - 8),
+                                   (160, 210, 255), duration=110)
 
     def start_reload(self):
         self.is_reloading = True
