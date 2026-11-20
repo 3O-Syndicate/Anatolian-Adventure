@@ -43,6 +43,10 @@ def spawn_floating_text(text, pos, color=(255, 255, 255), duration=45):
 G.create_floating_text = spawn_floating_text
 
 
+def level_name(level):
+    return "Eğitim" if level == 0 else f"Bölüm {level}"  # level 0 is the tutorial
+
+
 # Turkish texts use sentence case: the pixel font draws Ç Ğ İ Ö Ş Ü as small letters,
 # so all-caps words such as BÖLÜM would look broken.
 class UI:
@@ -126,9 +130,7 @@ class UI:
         G.screen.blit(coin_text, (WIDTH - 90, 18))
 
     def display_level(self):
-        level = game_stats["current_level"]
-        label = "Eğitim" if level == 0 else f"Bölüm {level}"  # level 0 is the tutorial
-        level_text = self.font.render(label, True, WHITE)
+        level_text = self.font.render(level_name(game_stats["current_level"]), True, WHITE)
         level_rect = level_text.get_rect(topright=(WIDTH - 160, 18))
         G.screen.blit(level_text, level_rect)
 
