@@ -63,7 +63,8 @@ BRICK_WALL = "brickwall"
 
 
 def decor_in_draw_order(level, layer):
-    items = [item for item in level["decor"] if item.get("layer", "back") == layer]
+    items = [item for item in level["decor"]
+             if ("back" if item["id"] == "shop" else item.get("layer", "back")) == layer]
     if layer == "back":
         items.sort(key=lambda item: item["id"] != BRICK_WALL)
     return items

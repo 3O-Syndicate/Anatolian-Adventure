@@ -69,6 +69,32 @@ class LevelTestCase(unittest.TestCase):
             self.player.check_enemy_collisions()
 
 
+class ShopTest(LevelTestCase):
+    level = 2
+
+    def test_valley_doorway_and_purchases(self):
+        shop = self.game_level.shop
+        building, = shop.buildings
+        self.assertTrue(self.game_level.solid_at_pixel(building.centerx, building.bottom))
+        self.player.base_player_rect.midbottom = building.midbottom
+        self.player.on_ground = True
+        game_stats["coins"] = 28
+        self.player.get_damage(50)
+        reserve = self.player.total_ammo
+        self.assertTrue(shop.try_open(self.player))
+        for index in range(4):
+            self.assertTrue(shop.buy(index))
+        self.assertEqual(self.player.health, 90)
+        self.assertEqual(self.player.total_ammo, reserve + 30)
+        self.assertEqual(self.player.run_speed, 12)
+        self.assertEqual(game_stats["coins"], 0)
+        self.assertFalse(shop.buy(1))
+        game_stats["coins"] = 10
+        self.assertFalse(shop.buy(2))
+        self.assertEqual(game_stats["coins"], 10)
+        shop.close()
+
+
 class PitTest(LevelTestCase):
     def test_camera_stops_at_map_bottom(self):
         from settings import HEIGHT

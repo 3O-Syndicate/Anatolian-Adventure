@@ -5,6 +5,7 @@ from item import Item
 from enemy import WalkingEnemy, TurtleEnemy, GoblinEnemy
 from settings import WIDTH, HEIGHT, TILESIZE, BEADS_NEEDED, game_stats, import_folder
 from terrain import TileTextures
+from shop import Shop, load_shop_image, shop_rect
 from ui import FloatingText
 import level_format
 import globals as G
@@ -165,6 +166,7 @@ class GameLevel:
         are rendered once here, then blitted while scrolling.
         """
         level = level_format.load_for_game(level_num)
+        self.shop = Shop(level["decor"])
         self.terrain_rows = level["terrain"]
         size = (level["width"] * TILESIZE, level["height"] * TILESIZE)
         self.background = tuple(level["background"])
@@ -255,13 +257,16 @@ class GameLevel:
             image = self.decor_image(decor["id"])
             if image is not None:
                 bottom_left = (decor["x"] * TILESIZE, (decor["y"] + 1) * TILESIZE)
-                surface.blit(image, image.get_rect(bottomleft=bottom_left))
+                rect = shop_rect(decor) if decor["id"] == "shop" else image.get_rect(bottomleft=bottom_left)
+                surface.blit(image, rect)
         return surface
 
     def decor_image(self, decor_id):
         if decor_id not in self.decor_images:
             path = f"decor/{decor_id}.png"
-            if os.path.isfile(path):
+            if decor_id == "shop":
+                self.decor_images[decor_id] = load_shop_image()
+            elif os.path.isfile(path):
                 self.decor_images[decor_id] = pygame.image.load(path).convert_alpha()
             else:
                 print(f"Warning: decor image not found: {path}")

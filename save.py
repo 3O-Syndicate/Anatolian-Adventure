@@ -34,13 +34,19 @@ def default_path():
 
 def snapshot(stats):
     """The progress fields of a game_stats dict."""
-    return {field: stats[key] for field, key in FIELDS.items()}
+    progress = {field: stats[key] for field, key in FIELDS.items()}
+    if stats.get("shop_upgrades"):
+        progress["shop_upgrades"] = list(stats["shop_upgrades"])
+    return progress
 
 
 def apply(progress, stats):
     """Copy loaded progress into a game_stats dict."""
     for field, key in FIELDS.items():
         stats[key] = progress[field]
+    stats.pop("shop_upgrades", None)
+    if progress.get("shop_upgrades"):
+        stats["shop_upgrades"] = list(progress["shop_upgrades"])
 
 
 def problem(data, level_exists=None):
@@ -54,6 +60,9 @@ def problem(data, level_exists=None):
         # bool is an int in Python; true/false is not a count
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
             return f"{field} is {value!r}, expected a whole number >= 0"
+    upgrades = data.get("shop_upgrades", [])
+    if not isinstance(upgrades, list) or any(item not in ("speed", "jump") for item in upgrades):
+        return "invalid shop upgrades"
     if level_exists is not None and not level_exists(data["level"]):
         return f"level {data['level']} does not exist"
     return None
@@ -77,13 +86,15 @@ def load(path=None, level_exists=None):
     if reason:
         set_aside(path, reason)
         return None
-    return {field: data[field] for field in FIELDS}
+    return {key: data[key] for key in (*FIELDS, "shop_upgrades") if key in data}
 
 
 def write(progress, path=None):
     """Save progress; returns False (and the game goes on) if the disk refuses."""
     path = path or default_path()
     data = {"version": VERSION, **{field: progress[field] for field in FIELDS}}
+    if progress.get("shop_upgrades"):
+        data["shop_upgrades"] = progress["shop_upgrades"]
     tmp = path + ".tmp"
     try:
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)

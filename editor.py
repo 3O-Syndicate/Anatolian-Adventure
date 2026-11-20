@@ -42,6 +42,7 @@ import pygame
 import level_format
 from settings import TILESIZE, TERRAIN_TEXTURES
 from terrain import TileTextures
+from shop import load_shop_image, shop_rect
 
 SCREEN_W, SCREEN_H = 1280, 720
 PANEL_W = 270
@@ -106,6 +107,7 @@ class Art:
         self.invisible.fill((255, 0, 255, 70))
         for i in range(0, TILESIZE * 2, 8):
             pygame.draw.line(self.invisible, (255, 0, 255, 160), (i, 0), (i - TILESIZE, TILESIZE))
+        self.decor["shop"] = load_shop_image()
         self.cache = {}
 
     def tile(self, tile_id):
@@ -132,6 +134,8 @@ class Art:
         return rect
 
     def decor_rect(self, decor):
+        if decor["id"] == "shop":
+            return shop_rect(decor)
         image = self.decor.get(decor["id"])
         size = image.get_size() if image else (TILESIZE, TILESIZE)
         return pygame.Rect((0, 0), size).move(
@@ -355,6 +359,11 @@ class Editor:
         if decor_id is None:
             return
         item = {"id": decor_id, "x": col, "y": row, "layer": self.decor_layer}
+        if decor_id == "shop":
+            if not (1 <= col < self.level["width"] - 1 and row >= 2):
+                self.message = "Dükkan için 3x3 alan gerekli"
+                return
+            item["layer"] = "back"
         if item not in self.level["decor"]:
             self.level["decor"].append(item)
             self.dirty = True

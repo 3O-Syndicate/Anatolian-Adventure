@@ -58,6 +58,13 @@ The HUD shows the remaining seconds under the level name. Pausing and tunnel
 transitions freeze the countdown. Running out of time costs a life, and a
 checkpoint respawn or level retry starts a fresh 120 seconds.
 
+Level 2 has a white shop in the valley. Stand in the centre doorway and press
+`E` to shop. The world and countdown pause. Click an offer or press `1`–`4`
+to buy, then press `E` or `Esc` to leave. First aid restores 40 health for
+5 coins, and 30 reserve rounds cost 3 coins. Running boots (+20% speed) and
+jump boots (+10% jump strength) cost 10 coins each and carry into later levels.
+To place another shop, select `shop` under **Dekor** and click the doorway tile.
+
 Golden tesbih beads (13 in every level) are counted under the coins. The old
 man at the end of the last level wants 33 of them; with 33 he says the time
 to summon "him" is coming (the final boss is planned for a later milestone).

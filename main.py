@@ -73,6 +73,7 @@ def reset_for_new_game(font, start_level=0, keep_score=False):
     G.enemy_group.empty()
     game_stats["current_level"] = start_level
     if not keep_score:
+        game_stats.pop("shop_upgrades", None)
         game_stats.update(coins=0, score=0, beads=0)
     return create_game_objects(font)
 
@@ -127,6 +128,7 @@ def main():
             save.write(level_start)
 
     def start_new_game():
+        game_stats.pop("shop_upgrades", None)
         game_stats.update(coins=0, score=0, beads=0)
         start_level(0)
 
@@ -190,11 +192,18 @@ def main():
             G.screen.blit(surface, surface.get_rect(center=(WIDTH // 2, y)))
 
     while True:
+        shop = game_level.shop if game_level else None
+        shopping = shop is not None and shop.is_open
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if wipe is not None:
+                continue
+            if shop is not None and shop.is_open:
+                shop.handle_event(event, G.screen)
+                continue
+            if shopping:
                 continue
             if event.type == pygame.KEYDOWN and in_menu:
                 if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
@@ -218,6 +227,8 @@ def main():
                         pygame.mixer.music.set_volume(G.sound_volume * vol)
                     except Exception:
                         pass
+                elif game_active and not game_paused and event.key == pygame.K_e:
+                    shopping = shop.try_open(player)
                 elif game_active and game_paused and event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
@@ -238,7 +249,7 @@ def main():
         elif in_menu:
             display_start_menu()
         elif game_active:
-            if not game_paused and wipe is None:
+            if not game_paused and wipe is None and not shopping:
                 if game_level.level_completed:
                     game_level.level_clear_timer += 1
                     if game_level.level_clear_timer >= 90:
@@ -291,6 +302,10 @@ def main():
                     display_level_cleared_banner()
                 elif game_paused:
                     display_pause_screen()
+                elif game_level.shop.is_open:
+                    game_level.shop.draw(G.screen)
+                elif wipe is None:
+                    game_level.shop.draw_prompt(G.screen, player, game_level.offset)
             else:
                 display_end_screen()
         else:

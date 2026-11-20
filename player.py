@@ -217,6 +217,10 @@ class Player(pygame.sprite.Sprite):
         self.base_player_rect = rect
         self.is_ducking = ducking
 
+    @property
+    def run_speed(self):
+        return 12 if "speed" in game_stats.get("shop_upgrades", ()) else 10
+
     def player_input(self):
         # Processes keyboard and mouse events for movement and actions.
         keys = pygame.key.get_pressed()
@@ -255,7 +259,7 @@ class Player(pygame.sprite.Sprite):
 
         can_jump = (self.on_ground or self.coyote_timer > 0) and not self.is_ducking
         if self.jump_buffer_timer > 0 and can_jump:
-            self.velocity_y = -20
+            self.velocity_y = -22 if "jump" in game_stats.get("shop_upgrades", ()) else -20
             self.on_ground = False
             self.coyote_timer = 0
             self.jump_buffer_timer = 0
@@ -275,11 +279,11 @@ class Player(pygame.sprite.Sprite):
             elif self.velocity_x < 0: self.velocity_x += 1
         elif keys[pygame.K_d]:
             if self.velocity_x<0: self.velocity_x*=-1;
-            elif self.velocity_x<10: self.velocity_x += 1
+            elif self.velocity_x < self.run_speed: self.velocity_x += 1
             self.direction = 1
         elif keys[pygame.K_a]:
             if self.velocity_x>0: self.velocity_x*=-1;
-            elif self.velocity_x>-10: self.velocity_x -= 1
+            elif self.velocity_x > -self.run_speed: self.velocity_x -= 1
             self.direction = 0
         elif self.velocity_x:
             if self.velocity_x>0: self.velocity_x -= 1
