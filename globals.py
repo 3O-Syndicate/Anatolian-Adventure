@@ -23,6 +23,8 @@ cage = None          # instance of Cage
 # Loaded assets that assets.py will set
 coin_imgs = None
 coin_icon = None
+bead_imgs = None     # golden tesbih bead frames (items/bead)
+bead_icon = None
 bullet_img = None
 
 # Player image

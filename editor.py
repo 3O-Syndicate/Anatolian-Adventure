@@ -58,7 +58,7 @@ OUTSIDE = (22, 24, 32)
 TABS = (("terrain", "Zemin"), ("decor", "Dekor"), ("entity", "Nesne"))
 ENTITY_LABELS = {
     "player": "Oyuncu", "walker": "Kaz", "turtle": "Tosbağa", "health": "Can",
-    "coin": "Altın", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
+    "coin": "Altın", "bead": "Boncuk", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
     "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu",
 }
 ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Zırh"}
@@ -90,6 +90,7 @@ class Art:
             "turtle": (load_image("enemies/turtle/walk/0.png"), "midbottom"),
             "health": (load_image("items/health.png"), "center"),
             "coin": (load_image("items/coin/0.png"), "center"),
+            "bead": (load_image("items/bead/0.png"), "center"),
             "tunnel": (None, "center"),
             "checkpoint": (load_image("objects/checkpoint/1.png"), "bottomleft"),
             "goal": (load_image("objects/goal/0.png"), "bottomleft"),

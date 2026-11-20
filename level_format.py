@@ -46,6 +46,7 @@ ENTITY_TYPES = {
     "turtle":     ({"dir": -1}, "any"),
     "health":     ({}, "any"),
     "coin":       ({}, "any"),
+    "bead":       ({}, "any"),
     "tunnel":     ({"pair": 1}, "pairs"),
     "checkpoint": ({}, "any"),
     "goal":       ({}, "one"),

@@ -145,6 +145,8 @@ class GameLevel:
                 Item(centre, "health potion")
             elif kind == "coin":
                 Item(centre, "coin")
+            elif kind == "bead":
+                Item(centre, "bead")
             elif kind == "walker":
                 self.enemy_spawn_pos.append(pos)
                 WalkingEnemy(pos, entity.get("dir", -1))

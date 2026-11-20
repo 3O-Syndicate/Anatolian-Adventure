@@ -3,7 +3,7 @@ import os
 import sys
 import pygame
 import globals as G
-from settings import WIDTH, HEIGHT, FPS, WHITE, YELLOW, RED, BLACK, game_stats
+from settings import WIDTH, HEIGHT, FPS, WHITE, YELLOW, RED, BLACK, BEADS_NEEDED, game_stats
 from player import Player
 from ui import UI, level_name
 from button import Button
@@ -44,7 +44,7 @@ def reset_for_new_game(font, start_level=0, keep_score=False):
     G.enemy_group.empty()
     game_stats["current_level"] = start_level
     if not keep_score:
-        game_stats.update(coins=0, score=0)
+        game_stats.update(coins=0, score=0, beads=0)
     return create_game_objects(font)
 
 
@@ -95,7 +95,7 @@ def main():
             save.write(level_start)
 
     def start_new_game():
-        game_stats.update(coins=0, score=0)
+        game_stats.update(coins=0, score=0, beads=0)
         start_level(0)
 
     if not in_menu:
@@ -106,7 +106,8 @@ def main():
         for text, text_font, color, y in (
             ("Anatolian Adventure", title_font, YELLOW, 170),
             (f"Kayıtlı oyun: {level_name(saved['level'])}", font, WHITE, 290),
-            (f"Skor {saved['score']:,}   Altın {saved['coins']}", font, WHITE, 330),
+            (f"Skor {saved['score']:,}   Altın {saved['coins']}   Boncuk {saved['beads']}/{BEADS_NEEDED}",
+             font, WHITE, 330),
             ("Devam etmek için Enter", font, YELLOW, 430),
             ("Yeni oyun için N", font, WHITE, 480),
         ):
@@ -135,7 +136,8 @@ def main():
             again = "Bu bölümü tekrar denemek için P"
         lines += (("Skorun:", font, WHITE, 290),
                   (f"{game_stats['score']:,}", title_font, WHITE, 360),
-                  (f"Altın: {game_stats['coins']}", font, (255, 223, 91), 430),
+                  (f"Altın: {game_stats['coins']}   Boncuk: {game_stats['beads']}/{BEADS_NEEDED}",
+                   font, (255, 223, 91), 430),
                   (again, font, YELLOW, HEIGHT * 7 // 8))
         for text, text_font, color, y in lines:
             surface = text_font.render(text, True, color)

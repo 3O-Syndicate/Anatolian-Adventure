@@ -9,7 +9,7 @@ Code names stay neutral so the lore can change without renaming files:
   turtle = the shell enemy (drawn as an Anatolian tortoise)
 
 Run:  python art/props/props_sprite.py
-Writes enemies/, decor/, objects/ and previews in art/props/out/.
+Writes enemies/, decor/, objects/, items/bead/ and previews in art/props/out/.
 """
 import math
 import random
@@ -320,6 +320,29 @@ OBJECTS = {
 
 
 # --------------------------------------------------------------------------
+# Pickups (items/<name>/<n>.png)
+# --------------------------------------------------------------------------
+
+def bead(turn):
+    """Golden tesbih bead turning on its string: turn 0-3 moves the string hole
+    across the front; a short string end sticks out on both sides."""
+    K = Kit(16, 16)
+    c = K.canvas()
+    c.draw(K.box(1, 7, 14, 8), "belt", "string")
+    c.draw(K.ellipse(8, 8, 5.6, 5.4), "brass", "bead")
+    hole_x = (5, 7, 9, 11)[turn]
+    c.px(RAMPS["brass"][0], (hole_x, 7), (hole_x, 8))
+    if turn in (0, 2):  # glint
+        c.px((255, 250, 220), (6, 4), (5, 5))
+    else:
+        c.px((255, 250, 220), (7, 4))
+    return c.image()
+
+
+ITEMS = {"bead": [bead(t) for t in range(4)]}
+
+
+# --------------------------------------------------------------------------
 # Terrain tiles (tiles/<name>.png, 32x32, repeat without seams)
 # --------------------------------------------------------------------------
 
@@ -386,7 +409,7 @@ def preview():
     for name, frames in ENEMIES.items():
         items += [(f"{name}/{i}", f) for i, f in enumerate(frames)]
     items += [(name, img) for name, img in DECOR.items()]
-    for name, frames in OBJECTS.items():
+    for name, frames in {**OBJECTS, **ITEMS}.items():
         items += [(f"{name}/{i}", f) for i, f in enumerate(frames)]
     pad, row_h, width = 10, 150, 760
     x, y, rows = pad, pad, [[]]
@@ -417,8 +440,11 @@ if __name__ == "__main__":
         img.save(decor_dir / f"{name}.png")
     for name, frames in OBJECTS.items():
         save_frames(ROOT / "objects" / name, frames)
+    for name, frames in ITEMS.items():
+        save_frames(ROOT / "items" / name, frames)
     for name, img in TILES.items():
         img.save(ROOT / "tiles" / f"{name}.png")
     preview().save(OUT / "props_preview.png")
     print("enemies:", sum(len(f) for f in ENEMIES.values()), "frames; decor:", len(DECOR),
-          "; objects:", sum(len(f) for f in OBJECTS.values()), "frames")
+          "; objects:", sum(len(f) for f in OBJECTS.values()), "frames; items:",
+          sum(len(f) for f in ITEMS.values()), "frames")

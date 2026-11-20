@@ -122,6 +122,16 @@ def load_assets():
 		assets['coin_imgs'] = []
 		print("Warning: coin animation folder not found or empty.")
 
+	# tesbih bead frames (folder); the HUD shows the first one at 2x
+	try:
+		assets['bead_imgs'] = import_folder("items/bead")
+	except Exception:
+		assets['bead_imgs'] = []
+	if not assets['bead_imgs']:
+		print("Warning: bead frames not found: items/bead")
+	assets['bead_icon'] = (pygame.transform.scale_by(assets['bead_imgs'][0], 2)
+	                       if assets['bead_imgs'] else None)
+
 	# player base image (single image path)
 	try:
 		raw_player = safe_load_image("player/0.png")
@@ -265,6 +275,8 @@ def load_assets():
 	G.muzzle_flash_imgs = assets['muzzle_flash_imgs']
 	G.enemy_frames = assets['enemy_frames']
 	G.coin_icon = assets['coin_icon']
+	G.bead_imgs = assets['bead_imgs']
+	G.bead_icon = assets['bead_icon']
 
 	# sounds
 	G.coin_sound = assets.get('coin_sound')

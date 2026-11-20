@@ -1,4 +1,4 @@
-"""Display the platformer HUD (health, ammo, score, level, coins) and floating text."""
+"""Display the platformer HUD (health, ammo, score, level, coins, beads) and floating text."""
 import pygame
 import globals as G
 from settings import *
@@ -55,6 +55,7 @@ class UI:
         self.maximum_health = 100
         self.font = font
         self.small_font = pygame.font.Font("font/PublicPixel.ttf", 10)
+        self.mid_font = pygame.font.Font("font/PublicPixel.ttf", 14)
         G.small_font = self.small_font
 
     def display_health(self):
@@ -129,6 +130,16 @@ class UI:
         G.screen.blit(coin_image, coin_image_rect)
         G.screen.blit(coin_text, (WIDTH - 90, 18))
 
+    def display_beads(self):
+        """Tesbih beads under the coins; the count turns green once the elder has enough."""
+        beads = game_stats.get("beads", 0)
+        icon = getattr(G, "bead_icon", None)
+        if icon is not None:
+            G.screen.blit(icon, icon.get_rect(center=(WIDTH - 110, 64)))
+        color = (140, 255, 140) if beads >= BEADS_NEEDED else (255, 223, 91)
+        label = self.mid_font.render(f"{beads}/{BEADS_NEEDED}", True, color)
+        G.screen.blit(label, label.get_rect(midleft=(WIDTH - 90, 64)))
+
     def display_level(self):
         level_text = self.font.render(level_name(game_stats["current_level"]), True, WHITE)
         level_rect = level_text.get_rect(topright=(WIDTH - 160, 18))
@@ -141,3 +152,4 @@ class UI:
         self.display_score()
         self.display_level()
         self.display_coin()
+        self.display_beads()

@@ -21,7 +21,7 @@ import os
 
 VERSION = 1
 # progress field -> key in settings.game_stats
-FIELDS = {"level": "current_level", "score": "score", "coins": "coins"}
+FIELDS = {"level": "current_level", "score": "score", "coins": "coins", "beads": "beads"}
 
 
 def default_path():
