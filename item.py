@@ -10,6 +10,7 @@ import pygame
 import math
 import globals as G
 from settings import *
+from effects import coin_twinkle
 
 class Item(pygame.sprite.Sprite):
     def __init__(self, pos, type, power=None):
@@ -98,6 +99,7 @@ class Item(pygame.sprite.Sprite):
                     self.kill()
 
             elif self.type == "coin":
+                coin_twinkle(self.rect.center)
                 if G.coin_sound: G.coin_sound.play()
                 game_stats["coins"] += 1
                 game_stats["score"] += 10
@@ -110,6 +112,7 @@ class Item(pygame.sprite.Sprite):
                 self.kill()
 
             elif self.type == "bead":
+                coin_twinkle(self.rect.center)
                 if G.coin_sound: G.coin_sound.play()
                 game_stats["beads"] += 1
                 game_stats["score"] += 50

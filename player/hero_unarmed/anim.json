@@ -76,6 +76,13 @@
         110
       ],
       "loop": true
+    },
+    "victory": {
+      "durations": [
+        220,
+        220
+      ],
+      "loop": true
     }
   }
 }

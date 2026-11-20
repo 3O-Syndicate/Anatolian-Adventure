@@ -43,7 +43,7 @@ class Pose:
     hips: tuple = (0, 0)          # pants and hip joints
     head: tuple = (0, 0)          # extra head offset on top of body
     belly: tuple = (0.0, 0.0)     # belly radius change (rx, ry)
-    face: str = "normal"          # normal, squint, shock
+    face: str = "normal"          # normal, squint, shock, happy
     near_foot: tuple = (1.0, 57.0, 0.0)   # ankle x offset from hip, ankle y, toe tilt
     far_foot: tuple = (0.0, 57.0, 0.0)
     gun: tuple = (0, 0)           # gun offset on top of body
@@ -54,6 +54,8 @@ class Pose:
     far_grip: tuple = None        # gun-local point the far hand holds, default forend
     show_gun: bool = True
     shell: str = None             # None, "hand" or "loading"
+    stache: float = 0.0           # moustache tips curl up by this many pixels
+    holding: str = None           # None or "kimiz": a small bowl on the near hand
 
 
 NEAR_HIP = (37.5, 48.0)
@@ -160,6 +162,9 @@ def draw_head(c, pose):
     if pose.face == "squint":
         c.px(dark, P(37, 11), P(38, 11), P(39, 11))
         c.px(brow, *[P(x, 9) for x in range(37, 41)], P(36, 10))
+    elif pose.face == "happy":  # eye shut in a smile, brow raised
+        c.px(dark, P(37, 11), P(38, 10), P(39, 10), P(40, 11))
+        c.px(brow, *[P(x, 7) for x in range(37, 41)], P(36, 8))
     elif pose.face == "shock":
         c.px((250, 250, 250), P(37, 9), P(38, 9), P(37, 10), P(38, 10), P(37, 11),
              P(38, 11), P(39, 9))
@@ -170,12 +175,17 @@ def draw_head(c, pose):
         c.px(dark, P(39, 10), P(39, 11), P(38, 12), P(39, 12))
         c.px(brow, *[P(x, 8) for x in range(37, 41)], P(36, 9))
 
+    lift = pose.stache
     stache = (ellipse(40.6 + hx, 18.5 + hy, 5.0, 2.1)
-              | ellipse(36.2 + hx, 20.0 + hy, 1.7, 1.8)
-              | ellipse(44.6 + hx, 19.0 + hy, 1.6, 1.7))
+              | ellipse(36.2 + hx, 20.0 + hy - lift, 1.7, 1.8)
+              | ellipse(44.6 + hx, 19.0 + hy - lift, 1.6, 1.7))
     c.draw(stache, "hair", "stache", thresh=(0.30, 0.62, 0.90))
 
-    if pose.face == "shock":
+    if pose.face == "happy":  # wide grin
+        c.px((128, 44, 48), *[P(x, 21) for x in range(38, 44)], P(39, 22), P(40, 22), P(41, 22), P(42, 22))
+        c.px((240, 236, 228), *[P(x, 21) for x in range(39, 43)])
+        c.px(RAMPS["skin"][0], P(37, 20), P(44, 20), P(40, 23), P(41, 23))
+    elif pose.face == "shock":
         c.px((60, 18, 22), P(39, 21), P(40, 21), P(41, 21), P(40, 22), P(41, 22))
         c.px(RAMPS["skin"][0], P(39, 22), P(42, 22), P(40, 23), P(41, 23))
     else:
@@ -232,6 +242,16 @@ def draw_shell(c, at, angle=0.0):
     c.draw(ellipse(base[0], base[1], 1.3, 1.6, a), "brass", "shell", inner=False)
 
 
+def draw_bowl(c, hand):
+    """A little kimiz bowl resting on the raised hand."""
+    x, y = hand
+    c.draw(ellipse(x, y - 6, 6, 6).where(YY > y - 6), "wood", "bowl", inner=False)
+    c.flat(ellipse(x, y - 6, 6, 1.6).mask, "wood", "bowl_rim", base=3)
+    c.flat(ellipse(x, y - 6.2, 4.8, 1.1).mask, "plaster", "bowl_milk", base=3)
+    c.px(RAMPS["brass"][2], (int(x) - 3, int(y) - 3), (int(x), int(y) - 2), (int(x) + 3, int(y) - 3))
+    c.draw(ellipse(x, y, 3.0, 2.4), "skin", "hand_bowl")
+
+
 def render(pose):
     c = Canvas()
     bx, by = pose.body
@@ -259,6 +279,8 @@ def render(pose):
     c.draw(ellipse(near_hand[0], near_hand[1], 3.6, 3.4), "skin", "hand_near")
     if pose.shell == "hand":
         draw_shell(c, (near_hand[0] + 1, near_hand[1] - 3), -30)
+    if pose.holding == "kimiz":
+        draw_bowl(c, near_hand)
     muzzle = gun.point("muzzle")
     return c.image(), (round(muzzle[0], 1), round(muzzle[1], 1))
 
@@ -365,6 +387,11 @@ UNARMED = {
              *ANIMS["duck"][1:]),
     "hurt": ([unarmed(ANIMS["hurt"][0][0], near=(-4, -22), far=(2, -24))], *ANIMS["hurt"][1:]),
     "death": ANIMS["death"],
+    # end of a level: the kimiz bowl held high, a happy face and a curling moustache
+    "victory": ([Pose(face="happy", show_gun=False, holding="kimiz",
+                      near_hand=(13, 11), far_hand=(44, 41)),
+                 Pose(body=(0, -1), face="happy", show_gun=False, holding="kimiz", stache=1.5,
+                      near_hand=(12, 9), far_hand=(44, 40))], [220, 220], True),
 }
 
 
@@ -417,6 +444,18 @@ def export():
             muzzles.append(list(muzzle))
             rendered[name].append(img)
         meta["anims"][name] = {"durations": durations, "loop": loop, "muzzle": muzzles}
+    d = frames_dir / "victory"
+    d.mkdir(parents=True, exist_ok=True)
+    for old in d.glob("*.png"):
+        old.unlink()
+    poses, durations, loop = UNARMED["victory"]
+    rendered["victory"] = []
+    for i, pose in enumerate(poses):
+        img, _ = render(pose)
+        img.save(d / f"{i}.png")
+        rendered["victory"].append(img)
+    meta["anims"]["victory"] = {"durations": durations, "loop": loop,
+                                "muzzle": [[32.0, 32.0]] * len(poses)}
     (frames_dir / "anim.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
     unarmed_dir = ROOT / "player" / "hero_unarmed"

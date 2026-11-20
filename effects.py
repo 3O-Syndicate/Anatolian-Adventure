@@ -1,8 +1,10 @@
 """
 effects.py
 
-Short-lived eye candy: sparkles, hearts and rings of light. Each effect is a
-sprite in all_sprites_group (so the level draws it) and in effects_group.
+Short-lived eye candy: sparkles and hearts, rings of light, goose feathers,
+coin twinkles and brick debris. Each effect is a sprite in all_sprites_group
+(so the level draws it) and in effects_group (so it keeps moving while the
+"level cleared" banner freezes everything else).
 """
 import math
 import random
@@ -97,3 +99,93 @@ def burst(center, count, speed, hearts=0.3, colours=None, life=(28, 46), size=3)
         Sparkle(center, (math.cos(angle) * v, math.sin(angle) * v - 1), random.randint(*life),
                 heart=random.random() < hearts,
                 colour=random.choice(colours) if colours else None, size=size)
+
+
+def coin_twinkle(center):
+    """A small golden star pop where a coin was picked up."""
+    burst(center, 6, 3.2, hearts=0, colours=((255, 236, 150), (255, 255, 255), (255, 210, 90)),
+          life=(12, 18), size=2)
+
+
+class Feather(Effect):
+    """A goose feather that pops up, then rocks from side to side as it floats down."""
+
+    def __init__(self, pos):
+        super().__init__()
+        self.pos = pygame.Vector2(pos)
+        self.vel = pygame.Vector2(random.uniform(-3, 3), random.uniform(-5, -2))
+        self.phase = random.uniform(0, 2 * math.pi)
+        self.life = self.max_life = random.randint(70, 100)
+        grey = random.choice(((250, 250, 252), (232, 234, 240), (210, 212, 222)))
+        base = pygame.Surface((7, 3), pygame.SRCALPHA)
+        pygame.draw.ellipse(base, grey, (0, 0, 7, 3))
+        pygame.draw.line(base, (170, 172, 186), (1, 1), (5, 1))  # the quill
+        self.base = base
+        self.image = base
+        self.rect = base.get_rect(center=pos)
+
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        level = G.game_level
+        if level is not None and level.solid_at_pixel(int(self.pos.x), int(self.pos.y) + 2):
+            # landed: lie still on the ground and fade out
+            self.life = min(self.life, 25)
+            sway = 0.0
+        else:
+            self.phase += 0.12
+            if self.vel.y < 1.0:
+                self.vel.y += 0.25
+            self.vel.x *= 0.94
+            sway = math.sin(self.phase)
+            self.pos += (self.vel.x + sway * 0.9, self.vel.y)
+        image = pygame.transform.rotate(self.base, sway * 35)
+        image.set_alpha(int(255 * min(1, self.life / 25)))
+        self.image = image
+        self.rect = image.get_rect(center=(round(self.pos.x), round(self.pos.y)))
+
+
+def feathers(center, count=9):
+    for _ in range(count):
+        Feather((center[0] + random.randint(-8, 8), center[1] + random.randint(-6, 6)))
+
+
+class Debris(Effect):
+    """A spinning piece of a broken brick that falls off the screen."""
+
+    def __init__(self, image, pos, velocity):
+        super().__init__()
+        self.base = image
+        self.pos = pygame.Vector2(pos)
+        self.vel = pygame.Vector2(velocity)
+        self.angle = 0
+        self.spin = random.choice((-1, 1)) * random.uniform(8, 16)
+        self.life = 90
+        self.image = image
+        self.rect = image.get_rect(center=pos)
+
+    def update(self):
+        self.life -= 1
+        if self.life <= 0:
+            self.kill()
+            return
+        self.vel.y += 0.8
+        self.pos += self.vel
+        self.angle += self.spin
+        self.image = pygame.transform.rotate(self.base, self.angle)
+        self.rect = self.image.get_rect(center=(round(self.pos.x), round(self.pos.y)))
+
+
+def brick_debris(texture, tile_rect):
+    """Four quarters of a brick tile flying up and out."""
+    half = tile_rect.width // 2
+    for i, (qx, qy) in enumerate(((0, 0), (half, 0), (0, half), (half, half))):
+        piece = texture.subsurface((qx, qy, half, half)).copy() if texture else None
+        if piece is None:
+            piece = pygame.Surface((half, half))
+            piece.fill((175, 75, 50))
+        side = -1 if qx == 0 else 1
+        Debris(piece, (tile_rect.x + qx + half // 2, tile_rect.y + qy + half // 2),
+               (side * random.uniform(2, 4), -random.uniform(9, 12) + (3 if qy else 0)))

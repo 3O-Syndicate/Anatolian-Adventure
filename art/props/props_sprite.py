@@ -637,6 +637,26 @@ ITEMS = {"bead": [bead(t) for t in range(4)], "kimiz": [kimiz(f) for f in range(
 
 
 # --------------------------------------------------------------------------
+# Effects (effects/<name>/<n>.png), drawn by the game on top of other art
+# --------------------------------------------------------------------------
+
+def nazar():
+    """Evil-eye bead on a short string, 9x13; the shop swings it from the top
+    centre pixel above its door."""
+    K = Kit(9, 13)
+    c = K.canvas()
+    c.px(RAMPS["belt"][1], (4, 0), (4, 1), (4, 2), (4, 3))
+    c.draw(K.ellipse(4.5, 7.5, 2.9, 2.9), "glass", "nazar")
+    c.px((250, 250, 250), (3, 6), (4, 6), (5, 6), (3, 7), (5, 7), (3, 8), (4, 8), (5, 8))
+    c.px((20, 20, 40), (4, 7))
+    c.px((150, 204, 240), (6, 6))
+    return c.image()
+
+
+EFFECTS = {"nazar": [nazar()]}
+
+
+# --------------------------------------------------------------------------
 # Terrain tiles (tiles/<name>.png, 32x32, repeat without seams)
 # --------------------------------------------------------------------------
 
@@ -738,6 +758,8 @@ if __name__ == "__main__":
         save_frames(ROOT / "items" / name, frames)
     for name, img in TILES.items():
         img.save(ROOT / "tiles" / f"{name}.png")
+    for name, frames in EFFECTS.items():
+        save_frames(ROOT / "effects" / name, frames)
     preview().save(OUT / "props_preview.png")
     print("enemies:", sum(len(f) for f in ENEMIES.values()), "frames; decor:", len(DECOR),
           "; objects:", sum(len(f) for f in OBJECTS.values()), "frames; items:",

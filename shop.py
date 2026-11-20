@@ -4,6 +4,7 @@ Maps opt in with a decor item {"id": "shop", "x": ..., "y": ...}.
 The anchor tile is the doorway (bottom centre); the building is 3x3 tiles.
 Prices and starter upgrades are defined in OFFERS below.
 """
+import math
 from pathlib import Path
 
 import pygame
@@ -11,6 +12,10 @@ import pygame
 from settings import TILESIZE, game_stats
 
 SHOP_IMAGE = Path(__file__).with_name("decor") / "shop.png"
+NAZAR_IMAGE = Path(__file__).with_name("effects") / "nazar" / "0.png"
+SIGN_AREA = pygame.Rect(9, 43, 78, 9)     # the ERDAL BAKKAL board in shop.png
+SIGN_INK = (168, 28, 36)                  # its letter colour (art/props/props_sprite.py)
+NAZAR_PIVOT = (56, 63)                    # on the door frame, right of the glass
 SHOP_SIZE = (3 * TILESIZE, 3 * TILESIZE)
 OFFERS = (
     ("heal", "İlk yardım", "40 can yeniler", 5),
@@ -49,6 +54,56 @@ class Shop:
         self.opened_at = 0
         self.font = pygame.font.Font("font/PublicPixel.ttf", 12)
         self.title_font = pygame.font.Font("font/PublicPixel.ttf", 20)
+        self.neon = self.make_neon() if self.buildings else None
+        self.nazar = (pygame.image.load(str(NAZAR_IMAGE)).convert_alpha()
+                      if self.buildings and NAZAR_IMAGE.is_file() else None)
+        self.nudge = 0.0  # extra swing after the player walks past the door
+
+    @staticmethod
+    def make_neon():
+        """The sign's letters lit up, with a warm halo, to blink over the board."""
+        if not SHOP_IMAGE.is_file():
+            return None
+        art = pygame.transform.scale(pygame.image.load(str(SHOP_IMAGE)).convert_alpha(), SHOP_SIZE)
+        neon = pygame.Surface(SHOP_SIZE, pygame.SRCALPHA)
+        ink = [(x, y) for x in range(SIGN_AREA.left, SIGN_AREA.right)
+               for y in range(SIGN_AREA.top, SIGN_AREA.bottom) if art.get_at((x, y))[:3] == SIGN_INK]
+        for x, y in ink:
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                if SIGN_AREA.collidepoint(x + dx, y + dy):
+                    neon.set_at((x + dx, y + dy), (255, 214, 140, 110))
+        for x, y in ink:
+            neon.set_at((x, y), (255, 84, 70, 255))
+        return neon
+
+    @staticmethod
+    def neon_lit(ms):
+        """On most of the time, with a short neon stutter every four seconds."""
+        t = ms % 4000
+        return not (2600 <= t < 2700 or 2800 <= t < 2950)
+
+    def draw_world(self, screen, offset):
+        """Effects on the shop art itself: the blinking sign and the swinging nazar."""
+        if not self.buildings:
+            return
+        ms = pygame.time.get_ticks()
+        import globals as G
+        player = G.player
+        if player is not None and self.doorway(player) is not None and abs(player.velocity_x) > 3:
+            self.nudge = 18.0
+        self.nudge *= 0.97
+        angle = (8 + self.nudge) * math.sin(ms / 420)
+        for building in self.buildings:
+            top_left = pygame.Vector2(building.topleft) - offset
+            if self.neon is not None and self.neon_lit(ms):
+                screen.blit(self.neon, top_left)
+            if self.nazar is not None:
+                w, h = self.nazar.get_size()
+                padded = pygame.Surface((2 * h, 2 * h), pygame.SRCALPHA)
+                padded.blit(self.nazar, (h - w // 2, h))  # string top on the centre
+                swung = pygame.transform.rotate(padded, angle)
+                pivot = top_left + NAZAR_PIVOT
+                screen.blit(swung, swung.get_rect(center=(round(pivot.x), round(pivot.y))))
 
     def doorway(self, player):
         if player.health <= 0 or player.is_caged or not player.on_ground:

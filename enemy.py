@@ -94,6 +94,7 @@ class WalkingEnemy(pygame.sprite.Sprite):
             G.enemy_death_sound.play()
         if getattr(G, "create_floating_text", None):
             G.create_floating_text("+100", self.rect.center, (255, 220, 50))
+        self.puff()
         self.kill()
 
     def on_bullet_hit(self, bullet):
@@ -103,7 +104,14 @@ class WalkingEnemy(pygame.sprite.Sprite):
             G.enemy_death_sound.play()
         if getattr(G, "create_floating_text", None):
             G.create_floating_text("+100", self.rect.center, (255, 220, 50))
+        self.puff()
         self.kill()
+
+    def puff(self):
+        """The goose leaves a cloud of feathers; the other enemies use their own."""
+        if type(self) is WalkingEnemy:
+            from effects import feathers
+            feathers(self.rect.center)
 
     def on_player_contact(self, player):
         """Return whether a non-stomp contact should kill the player."""

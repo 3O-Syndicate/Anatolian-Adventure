@@ -12,6 +12,7 @@ from enemy import resolve_enemy_collisions
 import assets
 import save
 from cage import Cage
+from effects import effects_group
 
 
 class BandWipe:
@@ -254,7 +255,9 @@ def main():
             if not game_paused and wipe is None and not shopping:
                 if game_level.level_completed:
                     game_level.level_clear_timer += 1
-                    if game_level.level_clear_timer >= 90:
+                    player.update_victory()
+                    effects_group.update()
+                    if game_level.level_clear_timer >= 150:
                         next_lvl = game_stats["current_level"] + 1
                         if has_level(next_lvl):
                             start_level(next_lvl)

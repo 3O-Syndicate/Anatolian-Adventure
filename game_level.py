@@ -127,11 +127,47 @@ class ElderNPC(HintSign):
             self.set_text(self.speech(beads), self.font)
         if self.near and beads >= BEADS_NEEDED and not self.greeted:
             self.greeted = True
+            from effects import burst, Ring
+            tesbih = self.bead_positions()
+            centre = tesbih[len(tesbih) // 2]
+            Ring(centre, life=30, colour=(255, 230, 140), reach=50)
+            burst(centre, 16, 4, hearts=0, colours=((255, 236, 150), (255, 255, 255)))
             game_stats["score"] += 500
             if getattr(G, "create_floating_text", None):
                 G.create_floating_text("Tesbih tamam! +500", (self.anchor[0], self.rect.top - 8),
                                        (255, 235, 140), duration=150)
 
+
+    # The tesbih loop in objects/npc frames (40 wide, drawn facing right and
+    # saved flipped): hand at (25, 42), the loop shifted by the frame's swing.
+    HAND = (25, 42)
+
+    def bead_positions(self):
+        """World centres of the loop's beads in the frame being shown."""
+        swing = (self.ticks // self.FRAME_TICKS) % len(self.frames)
+        hx, hy = self.HAND
+        loop = [(hx - 1, hy + 2), (hx - 2 + swing, hy + 4), (hx - 2 + swing, hy + 6),
+                (hx - 1 + swing, hy + 8), (hx + 1 + swing, hy + 8), (hx + 2 + swing, hy + 6),
+                (hx + 2 + swing, hy + 4), (hx + 1, hy + 2)]
+        width = self.image.get_width()
+        return [(self.rect.left + width - 1 - x + 0.5, self.rect.top + y + 0.5) for x, y in loop]
+
+    def draw_glow(self, screen, offset):
+        """With all the beads back, they light up one after another round the loop."""
+        if game_stats["beads"] < BEADS_NEEDED:
+            return
+        beads = self.bead_positions()
+        lit = (self.ticks // 5) % len(beads)
+        for back, alpha in ((2, 70), (1, 140), (0, 255)):
+            x, y = beads[(lit - back) % len(beads)]
+            halo = pygame.Surface((11, 11), pygame.SRCALPHA)
+            pygame.draw.circle(halo, (255, 220, 120, alpha // 2), (5, 5), 5)
+            pygame.draw.circle(halo, (255, 250, 215, alpha), (5, 5), 2)
+            screen.blit(halo, (round(x - offset.x) - 5, round(y - offset.y) - 5))
+        if self.ticks % 20 == 0:
+            from effects import Sparkle
+            x, y = beads[lit]
+            Sparkle((x, y), (0, -1.2), 30, colour=(255, 236, 150), size=2)
 
 
 class GameLevel:
@@ -168,11 +204,11 @@ class GameLevel:
         """
         level = level_format.load_for_game(level_num)
         self.shop = Shop(level["decor"])
-        self.terrain_rows = level["terrain"]
+        self.terrain_rows = list(level["terrain"])  # broken bricks are cleared here
         size = (level["width"] * TILESIZE, level["height"] * TILESIZE)
         self.background = tuple(level["background"])
         self.floor = pygame.Surface(size, pygame.SRCALPHA)
-        textures = TileTextures()
+        textures = self.textures = TileTextures()
         tunnel_markers = {}
         G.obstacles_group.empty()
         for row, line in enumerate(level["terrain"]):
@@ -317,6 +353,21 @@ class GameLevel:
                 return True
         return False
 
+    def break_brick(self, tile):
+        """A big hero's head breaks a brick: the tile, its picture and its map cell go."""
+        from effects import brick_debris
+        tile.kill()
+        self.floor.fill((0, 0, 0, 0), tile.rect)
+        col, row = tile.rect.x // TILESIZE, tile.rect.y // TILESIZE
+        line = self.terrain_rows[row]
+        self.terrain_rows[row] = line[:col] + level_format.EMPTY + line[col + 1:]
+        brick_debris(self.textures.get(tile.tile_type), tile.rect)
+        game_stats["score"] += 50
+        if getattr(G, "cage_break_sound", None):
+            G.cage_break_sound.play()
+        self.shake_timer = max(self.shake_timer, 6)
+        self.shake_amount = max(self.shake_amount, 3)
+
     def solid_at_pixel(self, x, y):
         col, row = x // TILESIZE, y // TILESIZE
         return (0 <= row < len(self.terrain_rows) and 0 <= col < len(self.terrain_rows[row])
@@ -351,12 +402,15 @@ class GameLevel:
         if self.decor_back is not None:
             G.screen.blit(self.decor_back, -draw_offset)
         G.screen.blit(self.floor, -draw_offset)
+        self.shop.draw_world(G.screen, draw_offset)
         texts = []
         for sprite in G.all_sprites_group:
             if isinstance(sprite, FloatingText):
                 texts.append(sprite)
             else:
                 G.screen.blit(sprite.image, pygame.Vector2(sprite.rect.topleft) - draw_offset)
+        if self.npc is not None:
+            self.npc.draw_glow(G.screen, draw_offset)
         if self.decor_front is not None:
             G.screen.blit(self.decor_front, -draw_offset)
         for sign in self.hint_signs:

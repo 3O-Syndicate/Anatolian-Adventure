@@ -145,14 +145,41 @@ class UI:
         level_rect = level_text.get_rect(topright=(WIDTH - 160, 18))
         G.screen.blit(level_text, level_rect)
 
+    def display_timer(self):
+        """Seconds left; in the last ten each second pops in red and the screen edges pulse."""
+        left = G.game_level.time_left_ms
+        seconds = (left + 999) // 1000
+        if not 0 < seconds <= 10:
+            timer = self.mid_font.render(f"Süre {seconds}", True, WHITE)
+            G.screen.blit(timer, timer.get_rect(topright=(WIDTH - 160, 52)))
+            return
+        beat = (left % 1000) / 1000  # 1 just after a second starts, 0 at its end
+        colour = (255, 70, 60) if beat > 0.5 else (255, 190, 180)
+        timer = self.mid_font.render(f"Süre {seconds}", True, colour)
+        pop = 1 + 0.45 * beat ** 3
+        timer = pygame.transform.scale_by(timer, pop)
+        G.screen.blit(timer, timer.get_rect(midright=(WIDTH - 160, 52 + self.mid_font.get_height() // 2)))
+        if getattr(self, "vignette", None) is None:
+            self.vignette = self.make_vignette()
+        self.vignette.set_alpha(int(40 + 110 * beat ** 2))
+        G.screen.blit(self.vignette, (0, 0))
+
+    @staticmethod
+    def make_vignette():
+        """Red glow along the screen edges, strongest at the border."""
+        surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        depth = 48
+        for i in range(depth):
+            alpha = int(150 * (1 - i / depth) ** 2)
+            pygame.draw.rect(surface, (220, 30, 30, alpha), (i, i, WIDTH - 2 * i, HEIGHT - 2 * i), 1)
+        return surface
+
     def update(self):
         self.display_health()
         self.display_ammo()
         self.display_items()
         self.display_score()
         self.display_level()
-        seconds = (G.game_level.time_left_ms + 999) // 1000
-        timer = self.mid_font.render(f"Süre {seconds}", True, WHITE)
-        G.screen.blit(timer, timer.get_rect(topright=(WIDTH - 160, 52)))
+        self.display_timer()
         self.display_coin()
         self.display_beads()

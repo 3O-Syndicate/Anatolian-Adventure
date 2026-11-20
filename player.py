@@ -15,7 +15,7 @@ import assets
 from settings import *
 from bullet import Bullet
 from acid import AcidPuddle
-from effects import Sparkle, Ring, burst
+from effects import Sparkle, Ring, burst, brick_debris
 
 
 class MuzzleFlash(pygame.sprite.Sprite):
@@ -47,6 +47,7 @@ class MuzzleFlash(pygame.sprite.Sprite):
 
 
 BIG_SCALE = 1.5     # a big hero is drawn and collides at 1.5x
+BRICK_TILE = 3      # terrain ID a big hero can break with his head
 GROW_TICKS = 66     # the grow effect; the hero hangs still meanwhile
 SHRINK_TICKS = 48   # flickering back to small after a hit
 
@@ -99,6 +100,7 @@ class Player(pygame.sprite.Sprite):
         self.squash = (1.0, 1.0)  # extra (x, y) stretch while growing
         self.grow_timer = 0
         self.shrink_timer = 0
+        self.victory_ticks = 0  # counts up after the goal flag
         self.anim_name = "idle"
         self.frame_index = 0
         self.frame_time = 0.0
@@ -245,6 +247,24 @@ class Player(pygame.sprite.Sprite):
             self.scale, self.squash = BIG_SCALE, (1.0, 1.0)
         self.animate()
 
+    def update_victory(self):
+        """After the goal flag: land, then raise the kimiz bowl among sparkles."""
+        self.victory_ticks += 1
+        self.velocity_x = 0
+        if not self.on_ground:
+            self.move()
+        for timer in ("hurt_timer", "land_timer", "shot_timer", "shrink_timer"):
+            setattr(self, timer, 0)
+        self.invulnerable_timer = 0
+        self.animate()
+        if self.on_ground and self.victory_ticks % 7 == 0:
+            sx, sy = getattr(self, "drawn_scale", (1.0, 1.0))
+            hand_x = 13 if self.direction == 1 else self.frame_width - 13
+            bowl = (self.rect.left + hand_x * sx, self.rect.top + 4 * sy)
+            Sparkle((bowl[0] + random.randint(-6, 6), bowl[1]),
+                    (random.uniform(-1.2, 1.2), random.uniform(-2.5, -1)), random.randint(30, 44),
+                    heart=random.random() < 0.4)
+
     def shrink(self, enemy):
         """A hit while big costs the size instead of the life."""
         set_power("big", False)
@@ -271,6 +291,8 @@ class Player(pygame.sprite.Sprite):
         """Pick the animation for the player's state, most important first."""
         if self.health <= 0:
             return "death"
+        if self.victory_ticks and self.on_ground:
+            return "victory"
         if self.hurt_timer > 0:
             return "hurt"
         if not self.on_ground:
@@ -626,6 +648,9 @@ class Player(pygame.sprite.Sprite):
             self.health = G.ui.maximum_health
 
     def check_collision(self, horizontal):
+        rising = self.velocity_y < 0
+        probe = self.base_player_rect.copy()  # before any push-back
+        bumped = []  # tiles hit with the head
         for sprite in G.obstacles_group:
             if sprite is getattr(self, "cage", None):
                 continue
@@ -634,13 +659,23 @@ class Player(pygame.sprite.Sprite):
                     if self.velocity_x > 0: self.base_player_rect.right = sprite.rect.left
                     elif self.velocity_x < 0: self.base_player_rect.left = sprite.rect.right
                 else:
-                    if self.velocity_y < 0: 
+                    if rising:
                         self.base_player_rect.top = sprite.rect.bottom
                         self.velocity_y = 0
+                        bumped.append(sprite)
                     elif self.velocity_y > 0: 
                         self.base_player_rect.bottom = sprite.rect.top
                         self.velocity_y = 0
                         self.on_ground = True
+        if bumped and self.is_big and G.game_level is not None:
+            # a big hero breaks the brick right above his head
+            # every tile across the head, not only the first one that pushed back
+            bumped = [t for t in G.obstacles_group if t is not getattr(self, "cage", None)
+                      and t.rect.colliderect(probe) and t.rect.bottom == self.base_player_rect.top]
+            head = self.base_player_rect.centerx
+            tile = min(bumped, key=lambda t: abs(t.rect.centerx - head))
+            if tile.tile_type == BRICK_TILE:
+                G.game_level.break_brick(tile)
 
     def check_enemy_collisions(self):
         """Resolve contacts after both the player and enemies have moved.
@@ -721,6 +756,8 @@ class Player(pygame.sprite.Sprite):
         if goal and not getattr(G.game_level, "level_completed", False):
             if self.base_player_rect.colliderect(goal.rect):
                 G.game_level.level_completed = True
+                self.victory_ticks = 1
+                self.is_ducking = False
                 from settings import game_stats
                 game_stats["score"] += 1000
                 if getattr(G, "create_floating_text", None):
