@@ -22,6 +22,7 @@ A level is a dict:
                   tunnel         pair: two tunnels with the same pair connect
                   chest          item: one of CHEST_ITEMS
                   hint           text: the tip shown on the sign
+                npc is the old man who wants the 33 tesbih beads (one, at the end)
 
 Old colour-mask levels (levels/<n>_mask.png) still load: they are converted
 with mask_to_level(). Convert one for good with:
@@ -54,6 +55,7 @@ ENTITY_TYPES = {
     "chest":      ({"item": "shotgun"}, "any"),
     "wallet":     ({}, "any"),
     "hint":       ({"text": ""}, "any"),
+    "npc":        ({}, "any"),
 }
 CHEST_ITEMS = ("acid", "shotgun", "armor")
 DECOR_LAYERS = ("back", "front")

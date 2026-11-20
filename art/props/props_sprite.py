@@ -383,11 +383,56 @@ def wallet():
     return c.image()
 
 
+def elder(swing):
+    """Placeholder NPC (code name npc): an old man with a flat cap, white beard,
+    waistcoat and walking stick, a tesbih hanging from his hand. 40x64; drawn
+    facing right, saved facing left, towards a player arriving from the left.
+    swing: x offset of the hanging tesbih loop."""
+    K = Kit(40, 64)
+    c = K.canvas()
+    ink = RAMPS["hair"][0]
+    # legs and shoes
+    for x in (17, 23):
+        c.draw(K.capsule((x, 45), (x, 59), 2.6, 2.3), "pants", f"leg{x}")
+        c.draw(K.ellipse(x + 1.5, 61, 3.6, 1.8).where(K.YY < 63), "shoe", f"shoe{x}")
+    # brown jacket over a white shirt that shows down the front
+    c.draw(K.ellipse(20, 36, 7.5, 10.5) | K.ellipse(20, 45, 6.5, 3.5), "belt", "jacket")
+    c.draw(K.poly([(22.5, 27), (26.5, 27), (25.5, 38), (23.5, 38)], tilt=0.0), "shirt", "shirt")
+    for y in (31, 35):  # jacket buttons
+        c.px(RAMPS["brass"][2], (22, y))
+    # head, white beard and moustache, flat cap with its brim forward
+    c.draw(K.ellipse(22, 18, 6.2, 6.6), "skin", "head")
+    c.draw(K.ellipse(24.5, 24, 5.0, 5.6) | K.ellipse(26.5, 20.8, 3.2, 1.5), "cloth", "beard")
+    c.draw(K.ellipse(21, 13, 7.2, 3.6).where(K.YY < 14.5) |
+           K.poly([(24, 11.5), (31.5, 13), (31, 14.6), (24, 14.6)], tilt=0.2), "metal", "cap")
+    c.px(ink, (25, 17))                                   # eye
+    c.px(RAMPS["cloth"][3], (24, 15), (25, 15), (26, 15))  # bushy white brow
+    c.px(RAMPS["skin"][1], (28, 18), (28, 19))           # nose
+    c.draw(K.ellipse(17, 18, 1.6, 2.2), "skin", "ear")
+    # back arm across the belly: the tesbih hangs from that hand, golden beads
+    # in a loop with a red tassel
+    hx, hy = 25, 42
+    c.draw(K.capsule((17, 28), (hx - 1, hy - 1), 2.3, 2.0), "belt", "arm_back")
+    c.draw(K.ellipse(hx, hy, 2.0, 1.8), "skin", "hand_back")
+    loop = [(hx - 1, hy + 2), (hx - 2 + swing, hy + 4), (hx - 2 + swing, hy + 6),
+            (hx - 1 + swing, hy + 8), (hx + 1 + swing, hy + 8), (hx + 2 + swing, hy + 6),
+            (hx + 2 + swing, hy + 4), (hx + 1, hy + 2)]
+    c.px(RAMPS["brass"][3], *loop)
+    c.px(RAMPS["brass"][1], loop[3], loop[6])
+    c.px(RAMPS["shell"][2], (hx + swing, hy + 9), (hx + swing, hy + 10), (hx + swing - 1, hy + 10))
+    # front arm on the walking stick
+    c.draw(K.capsule((31, 37), (33.5, 62), 1.2), "wood", "stick")
+    c.draw(K.capsule((22, 28), (30, 37), 2.4, 2.0), "belt", "arm_front")
+    c.draw(K.ellipse(30.5, 37.5, 2.2, 2.0), "skin", "hand")
+    return c.image().transpose(Image.FLIP_LEFT_RIGHT)
+
+
 OBJECTS = {
     "checkpoint": [checkpoint(False), checkpoint(True)],
     "goal": [goal(0), goal(1)],
     "chest": [chest(False), chest(True)],
     "wallet": [wallet()],
+    "npc": [elder(0), elder(1)],
 }
 
 

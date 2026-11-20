@@ -59,7 +59,7 @@ TABS = (("terrain", "Zemin"), ("decor", "Dekor"), ("entity", "Nesne"))
 ENTITY_LABELS = {
     "player": "Oyuncu", "walker": "Kaz", "turtle": "Tosbağa", "goblin": "Goblin", "health": "Can",
     "coin": "Altın", "bead": "Boncuk", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
-    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu",
+    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu", "npc": "Dede (NPC)",
 }
 ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Zırh"}
 TERRAIN_LABELS = {0: "Görünmez", 1: "Zemin", 2: "Toprak", 3: "Tuğla", 4: "Bulut"}
@@ -98,6 +98,7 @@ class Art:
             "chest": (load_image("objects/chest/0.png"), "midbottom"),
             "wallet": (load_image("objects/wallet/0.png"), "midbottom"),
             "hint": (load_image("decor/sign.png"), "midbottom"),
+            "npc": (load_image("objects/npc/0.png"), "midbottom"),
         }
         self.invisible = pygame.Surface((TILESIZE, TILESIZE), pygame.SRCALPHA)
         self.invisible.fill((255, 0, 255, 70))

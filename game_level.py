@@ -3,7 +3,7 @@ import os
 import pygame
 from item import Item
 from enemy import WalkingEnemy, TurtleEnemy, GoblinEnemy
-from settings import WIDTH, HEIGHT, TILESIZE, import_folder
+from settings import WIDTH, HEIGHT, TILESIZE, BEADS_NEEDED, game_stats, import_folder
 from terrain import TileTextures
 from ui import FloatingText
 import level_format
@@ -64,11 +64,23 @@ class HintSign(pygame.sprite.Sprite):
 
     @staticmethod
     def make_bubble(text, font):
-        label = font.render(text, True, (255, 255, 255))
-        bubble = pygame.Surface((label.get_width() + 20, label.get_height() + 14), pygame.SRCALPHA)
+        """Dark rounded box with the text; "\\n" starts a new line."""
+        labels = [font.render(line, True, (255, 255, 255)) for line in text.split("\n")]
+        gap = 5
+        width = max(label.get_width() for label in labels) + 20
+        height = sum(label.get_height() for label in labels) + gap * (len(labels) - 1) + 14
+        bubble = pygame.Surface((width, height), pygame.SRCALPHA)
         pygame.draw.rect(bubble, (20, 24, 36, 225), bubble.get_rect(), border_radius=6)
-        bubble.blit(label, (10, 7))
+        y = 7
+        for label in labels:
+            bubble.blit(label, (10, y))
+            y += label.get_height() + gap
         return bubble
+
+    def set_text(self, text, font):
+        self.bubble = self.make_bubble(text, font) if text else None
+        self.bubble_rect = (self.bubble.get_rect(midbottom=(self.anchor[0], self.anchor[1] - self.BUBBLE_LIFT))
+                            if self.bubble else None)
 
     def update(self):
         player = G.player
@@ -76,6 +88,48 @@ class HintSign(pygame.sprite.Sprite):
         self.near = (player is not None and not player.is_caged
                      and abs(player.base_player_rect.centerx - self.anchor[0]) < self.REACH[0]
                      and abs(player.base_player_rect.bottom - self.anchor[1]) < self.REACH[1])
+
+
+class ElderNPC(HintSign):
+    """The old man who wants the 33 golden tesbih beads (code name npc).
+
+    He talks like a hint sign: the bubble shows while the player is near,
+    and its text follows the bead count. With enough beads he will summon
+    the final boss; until the boss exists he says that it is coming.
+    """
+    REACH = (TILESIZE * 5, TILESIZE * 3)
+    BUBBLE_LIFT = TILESIZE * 3
+    FRAME_TICKS = 24
+
+    def __init__(self, frames, cell, font):
+        super().__init__(frames[0], "", cell, font)
+        self.frames = frames
+        self.font = font
+        self.ticks = 0
+        self.shown_beads = None
+        self.greeted = False  # the "enough beads" reward is given once
+
+    @staticmethod
+    def speech(beads):
+        if beads >= BEADS_NEEDED:
+            return f"{BEADS_NEEDED} boncuk tamam, aferin evlat!\nOnu çağırmanın vakti yakında gelecek..."
+        missing = BEADS_NEEDED - beads
+        return f"Tesbihimin altın boncukları dağıldı.\n{missing} tane daha getir, evlat."
+
+    def update(self):
+        super().update()
+        self.ticks += 1
+        self.image = self.frames[(self.ticks // self.FRAME_TICKS) % len(self.frames)]
+        beads = game_stats["beads"]
+        if beads != self.shown_beads:
+            self.shown_beads = beads
+            self.set_text(self.speech(beads), self.font)
+        if self.near and beads >= BEADS_NEEDED and not self.greeted:
+            self.greeted = True
+            game_stats["score"] += 500
+            if getattr(G, "create_floating_text", None):
+                G.create_floating_text("Tesbih tamam! +500", (self.anchor[0], self.rect.top - 8),
+                                       (255, 235, 140), duration=150)
 
 
 class GameLevel:
@@ -98,6 +152,7 @@ class GameLevel:
         self.tunnels = {}
         self.decor_images = {}
         self.hint_signs = []
+        self.npc = None
         self.prepare(level_num)
 
     def prepare(self, level_num):
@@ -170,6 +225,11 @@ class GameLevel:
             elif kind == "hint":
                 sign = self.decor_image("sign") or self.placeholder((TILESIZE, TILESIZE))
                 self.hint_signs.append(HintSign(sign, entity.get("text", ""), (x, y), hint_font))
+            elif kind == "npc":
+                frames = (import_folder("objects/npc") if os.path.isdir("objects/npc") else []) \
+                    or [self.placeholder((TILESIZE, 2 * TILESIZE))]
+                self.npc = ElderNPC(frames, (x, y), hint_font)
+                self.hint_signs.append(self.npc)  # drawn with the hint bubbles
             elif kind == "tunnel":
                 tunnel_cells.setdefault(entity["pair"], []).append(
                     pygame.Rect(pos, (TILESIZE, TILESIZE)))
