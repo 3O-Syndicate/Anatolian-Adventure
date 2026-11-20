@@ -308,9 +308,146 @@ def cloud():
     return c.image(outline=(150, 182, 224))
 
 
+def awning(c, K, x0, x1, top, bottom, group):
+    """Red and white striped awning that widens downwards, scalloped hem."""
+    mask = K.poly_mask([(x0 + 2, top), (x1 - 1, top), (x1 + 1, bottom), (x0, bottom)])
+    for cx in range(x0 + 2, x1, 4):
+        mask |= K.ellipse(cx, bottom, 2.1, 2.2).mask & (K.YY > bottom)
+    red = ((K.XX - x0) // 4) % 2 == 0
+    c.flat(mask & red, "flag", group + "_red")
+    c.flat(mask & ~red, "cloth", group + "_white", base=3)
+
+
+# 5x7 capitals for shop signs, one string per row ('#' = ink)
+SIGN_FONT = {
+    "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    "B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    "D": ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    "K": ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
+    "L": ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    "R": ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+}
+
+
+def sign_text(c, text, x, y, colour, shadow):
+    """Write text in SIGN_FONT with a one-pixel drop shadow; returns the width."""
+    start = x
+    for ch in text:
+        if ch == " ":
+            x += 4
+            continue
+        for dy, row in enumerate(SIGN_FONT[ch]):
+            for dx, cell in enumerate(row):
+                if cell == "#":
+                    c.px(shadow, (x + dx + 1, y + dy + 1))
+        for dy, row in enumerate(SIGN_FONT[ch]):
+            for dx, cell in enumerate(row):
+                if cell == "#":
+                    c.px(colour, (x + dx, y + dy))
+        x += 6
+    return x - start - 1
+
+
+def text_width(text):
+    return sum(4 if ch == " " else 6 for ch in text) - 1
+
+
+def shop():
+    """Erdal Bakkal, 96x96 (3x3 tiles): a neighbourhood grocery with a clay-tile
+    roof, a big ERDAL BAKKAL sign, a striped awning, display windows full of
+    goods and crates of produce out front. The door fills the bottom-centre
+    tile, the doorway where the game opens the shop."""
+    K = Kit(96, 96)
+    c = K.canvas()
+    YY = K.YY
+    stone, roof_r, wood, plaster = RAMPS["stone"], RAMPS["rooftile"], RAMPS["wood"], RAMPS["plaster"]
+
+    # chimney behind the roof
+    c.flat(K.box(67, 6, 75, 24).mask, "stone", "chimney")
+    c.flat(K.box(65, 3, 77, 6).mask, "stone", "chimney_cap")
+    c.px(stone[1], *[(x, 13) for x in range(68, 75)], *[(71, y) for y in range(7, 13)])
+
+    # plastered walls with stone corner blocks
+    c.flat(K.box(6, 38, 89, 95).mask, "plaster", "wall")
+    for i, y in enumerate(range(56, 86, 7)):
+        w = 5 if i % 2 == 0 else 3
+        c.flat(K.box(6, y, 6 + w, y + 5).mask, "stone", f"quoin_l{i}")
+        c.flat(K.box(89 - w, y, 89, y + 5).mask, "stone", f"quoin_r{i}")
+
+    # stone footing, laid in courses
+    c.flat(K.box(4, 86, 91, 95).mask, "stone", "footing")
+    c.px(stone[1], *[(x, 90) for x in range(5, 91)])
+    for row, y0 in enumerate((87, 91)):
+        for x in range(8 + 5 * row, 91, 10):
+            c.px(stone[1], *[(x, y) for y in range(y0, y0 + 3)])
+
+    # clay-tile roof: rows of tiles with a ridge cap, eaves past the walls
+    roof = K.poly_mask([(0, 38), (14, 10), (82, 10), (96, 38)])
+    c.flat(roof, "rooftile", "roof")
+    for r, y in enumerate(range(15, 38, 5)):
+        c.px(roof_r[0], *[(x, y) for x in range(96) if roof[y, x]])
+        c.px(roof_r[3], *[(x, y + 1) for x in range(96) if y + 1 < 38 and roof[y + 1, x]])
+        for x in range(3 * (r % 2), 96, 6):
+            c.px(roof_r[1], *[(x, yy) for yy in range(y - 4, y) if roof[yy, x]])
+    c.flat(K.box(12, 8, 83, 11).mask, "rooftile", "ridge", base=1)
+    c.flat(K.box(3, 38, 92, 40).mask, "wood", "beam")
+
+    # the sign: red letters on a white board with a blue frame
+    c.flat(K.box(7, 41, 88, 53).mask, "glass", "sign_frame", base=1)
+    c.flat(K.box(9, 43, 86, 51).mask, "cloth", "sign", base=3)
+    text = "ERDAL BAKKAL"
+    sign_text(c, text, 48 - (text_width(text) + 1) // 2, 43, RAMPS["flag"][1], RAMPS["cloth"][1])
+
+    # striped awning across the front
+    awning(c, K, 7, 88, 54, 59, "awning")
+
+    # display windows: shelves of bottles, jars and boxes behind the glass
+    goods = [RAMPS[k][2] for k in ("flag", "brass", "leaf", "glass", "beak", "cloth", "shell")]
+    for side, x0 in (("l", 10), ("r", 61)):
+        c.flat(K.box(x0, 63, x0 + 24, 84).mask, "wood", f"wframe_{side}")
+        c.flat(K.box(x0 + 2, 65, x0 + 22, 82).mask, "glass", f"glass_{side}", base=1)
+        for s, shelf_y in enumerate((70, 76, 82)):
+            c.px(wood[1], *[(x, shelf_y) for x in range(x0 + 2, x0 + 23)])
+            for k, x in enumerate(range(x0 + 3, x0 + 22, 3)):
+                col = goods[(k * 3 + s * 2 + (x0 // 10)) % len(goods)]
+                h = 2 + (k + s) % 3
+                c.px(col, *[(x, shelf_y - 1 - j) for j in range(h)], (x + 1, shelf_y - 1),
+                     *[(x + 1, shelf_y - 1 - j) for j in range(h - 1)])
+                c.px(RAMPS["cloth"][3], (x, shelf_y - h))
+        c.px(RAMPS["glass"][3], (x0 + 3, 66), (x0 + 4, 66), (x0 + 3, 67), (x0 + 18, 66))
+
+    # glazed shop door with a little "open" plate
+    c.flat(K.box(37, 62, 58, 95).mask, "wood", "door_frame")
+    c.flat(K.box(40, 64, 55, 95).mask, "wood", "door", base=3)
+    c.flat(K.box(42, 66, 53, 80).mask, "glass", "door_glass", base=1)
+    c.px(RAMPS["glass"][3], (43, 67), (44, 67), (43, 68))
+    c.flat(K.box(44, 71, 51, 74).mask, "leaf", "open_plate", base=3)
+    c.px(RAMPS["leaf"][0], *[(x, 72) for x in range(45, 51, 2)], *[(x, 73) for x in range(46, 51, 2)])
+    c.px(RAMPS["metal"][1], (47, 66), (48, 66), (46, 67), (49, 67), (45, 68), (50, 68))
+    c.draw(K.ellipse(53, 85, 1.3, 1.3), "brass", "handle")
+    c.flat(K.box(36, 94, 59, 95).mask, "stone", "step", base=3)
+
+    # produce out front: tomatoes and oranges on the left, bread on the right
+    for name, x0, fruit in (("tomato", 8, "poppy"), ("orange", 22, "beak")):
+        c.flat(K.box(x0, 87, x0 + 12, 95).mask, "wood", f"crate_{name}")
+        c.px(wood[1], *[(x, 91) for x in range(x0, x0 + 13)])
+        pile = K.ellipse(x0 + 4.5, 84, 2.4, 2.2) | K.ellipse(x0 + 8.5, 84, 2.4, 2.2)
+        for ox in (x0 + 2.5, x0 + 6.5, x0 + 10.5):
+            pile = pile | K.ellipse(ox, 86, 2.4, 2.2)
+        c.draw(pile.where(K.YY < 87), fruit, name, inner=False)
+    c.flat(K.box(63, 86, 87, 95).mask, "wood", "bread_crate")
+    c.px(wood[1], *[(x, 90) for x in range(63, 88)])
+    for i, bx in enumerate((68, 75.5, 83)):
+        c.draw(K.ellipse(bx, 84.5, 3.6, 2.4).where(K.YY < 86), "scute", f"bread{i}")
+        c.px(RAMPS["scute"][1], (int(bx) - 1, 84), (int(bx) + 1, 84))
+    return c.image()
+
+
 DECOR = {
     "bush": bush(), "tree": tree(), "fence": fence(), "rock": rock(),
     "grass": grass(), "flowers": flowers(), "sign": sign(), "cloud": cloud(),
+    "shop": shop(),
 }
 
 
