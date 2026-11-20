@@ -151,5 +151,8 @@ class UI:
         self.display_items()
         self.display_score()
         self.display_level()
+        seconds = (G.game_level.time_left_ms + 999) // 1000
+        timer = self.mid_font.render(f"Süre {seconds}", True, WHITE)
+        G.screen.blit(timer, timer.get_rect(topright=(WIDTH - 160, 52)))
         self.display_coin()
         self.display_beads()

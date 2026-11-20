@@ -133,7 +133,10 @@ class ElderNPC(HintSign):
 
 
 class GameLevel:
+    TIME_LIMIT_MS = 120_000
+
     def __init__(self, level_num):
+        self.time_left_ms = self.TIME_LIMIT_MS
         self.offset = pygame.Vector2()
         self.shake_timer = 0
         self.shake_amount = 0

@@ -266,11 +266,16 @@ def main():
                         resolve_enemy_collisions()
                         player.check_enemy_collisions()
                         game_level.update_camera()
+                        if player.health > 0 and not player.is_caged:
+                            game_level.time_left_ms = max(0, game_level.time_left_ms - clock.get_time())
+                            if game_level.time_left_ms == 0:
+                                player.get_damage(player.health)
                 else:
                     player.update()  # death animation; the world waits for it
                 if player.death_finished and game_level.last_checkpoint is not None:
                     wipe = BandWipe(G.screen)
                     player.respawn(game_level.last_checkpoint.rect.midbottom)
+                    game_level.time_left_ms = game_level.TIME_LIMIT_MS
                     game_level.snap_camera()
                 elif player.death_finished:
                     wipe = BandWipe(G.screen)

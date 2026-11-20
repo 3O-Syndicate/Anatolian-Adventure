@@ -53,6 +53,11 @@ Touching a checkpoint flag makes it the place to respawn after dying. Chests
 open on touch: the shotgun chest gives ammo, the armor chest stops one enemy
 hit, the acid chest gives three flasks for `Q`.
 
+Each map gives you 120 seconds from the moment you leave the starting cage.
+The HUD shows the remaining seconds under the level name. Pausing and tunnel
+transitions freeze the countdown. Running out of time costs a life, and a
+checkpoint respawn or level retry starts a fresh 120 seconds.
+
 Golden tesbih beads (13 in every level) are counted under the coins. The old
 man at the end of the last level wants 33 of them; with 33 he says the time
 to summon "him" is coming (the final boss is planned for a later milestone).
