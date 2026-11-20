@@ -331,6 +331,43 @@ ANIMS = {
 }
 
 
+# Unarmed: the same moves before the hero finds his shotgun. Free hands hang
+# by the belly (near hand behind it, far hand in front) and swing opposite
+# the legs when running.
+NEAR_REST = (19.5, 44.0)
+FAR_REST = (45.0, 42.0)
+
+
+def unarmed(pose, near=(0.0, 0.0), far=(0.0, 0.0)):
+    bx, by = pose.body
+    return replace(pose, show_gun=False,
+                   near_hand=(NEAR_REST[0] + bx + near[0], NEAR_REST[1] + by + near[1]),
+                   far_hand=(FAR_REST[0] + bx + far[0], FAR_REST[1] + by + far[1]))
+
+
+def unarmed_run():
+    frames = []
+    for pose in run_frames():
+        swing = -pose.near_foot[0]  # arm swings against its own side's leg
+        frames.append(unarmed(pose, near=(swing, -abs(swing) * 0.3),
+                              far=(-swing * 0.8, -abs(swing) * 0.3)))
+    return frames
+
+
+UNARMED = {
+    "idle": ([unarmed(p) for p in ANIMS["idle"][0]], *ANIMS["idle"][1:]),
+    "run": (unarmed_run(), *ANIMS["run"][1:]),
+    "jump": ([unarmed(ANIMS["jump"][0][0], near=(-9, -6), far=(8, -8))], *ANIMS["jump"][1:]),
+    "fall": ([unarmed(p, near=(-10, -9), far=(9, -11)) for p in ANIMS["fall"][0]],
+             *ANIMS["fall"][1:]),
+    "land": ([unarmed(ANIMS["land"][0][0], near=(-1, 1), far=(1, 1))], *ANIMS["land"][1:]),
+    "duck": ([unarmed(p, near=(3, -2), far=(-1, -1)) for p in ANIMS["duck"][0]],
+             *ANIMS["duck"][1:]),
+    "hurt": ([unarmed(ANIMS["hurt"][0][0], near=(-4, -22), far=(2, -24))], *ANIMS["hurt"][1:]),
+    "death": ANIMS["death"],
+}
+
+
 def muzzle_flash_frames():
     """Three flash frames, anchored at the left-middle pixel (0, 6)."""
     frames = []
@@ -382,6 +419,21 @@ def export():
         meta["anims"][name] = {"durations": durations, "loop": loop, "muzzle": muzzles}
     (frames_dir / "anim.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
+    unarmed_dir = ROOT / "player" / "hero_unarmed"
+    unarmed_meta = {**meta, "anims": {}}
+    for name, (poses, durations, loop) in UNARMED.items():
+        d = unarmed_dir / name
+        d.mkdir(parents=True, exist_ok=True)
+        for old in d.glob("*.png"):
+            old.unlink()
+        rendered[f"unarmed_{name}"] = []
+        for i, pose in enumerate(poses):
+            img, _ = render(pose)
+            img.save(d / f"{i}.png")
+            rendered[f"unarmed_{name}"].append(img)
+        unarmed_meta["anims"][name] = {"durations": durations, "loop": loop}
+    (unarmed_dir / "anim.json").write_text(json.dumps(unarmed_meta, indent=2), encoding="utf-8")
+
     fx_dir = ROOT / "effects" / "muzzle_flash"
     fx_dir.mkdir(parents=True, exist_ok=True)
     flashes = muzzle_flash_frames()
@@ -420,7 +472,7 @@ def preview_gif(rendered, meta, flashes):
         img = Image.new("RGBA", (cols * cell_w, rows * cell_h), (110, 175, 230, 255))
         d = ImageDraw.Draw(img)
         for i, name in enumerate(names):
-            info = meta["anims"][name]
+            info = meta["anims"][name.removeprefix("unarmed_")]
             durs = info["durations"]
             cycle = sum(durs)
             local = t % (cycle + (0 if info["loop"] else 600))

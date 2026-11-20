@@ -133,6 +133,7 @@ class ElderNPC(HintSign):
                                        (255, 235, 140), duration=150)
 
 
+
 class GameLevel:
     TIME_LIMIT_MS = 120_000
 
@@ -208,6 +209,8 @@ class GameLevel:
                 Item(centre, "coin")
             elif kind == "bead":
                 Item(centre, "bead")
+            elif kind == "kimiz":
+                Item(centre, "kimiz", entity.get("power", "big"))
             elif kind == "walker":
                 self.enemy_spawn_pos.append(pos)
                 WalkingEnemy(pos, entity.get("dir", -1))

@@ -115,6 +115,7 @@
     {"type": "bead", "x": 88, "y": 25},
     {"type": "goblin", "x": 57, "y": 28, "dir": -1},
     {"type": "goblin", "x": 96, "y": 28, "dir": -1},
-    {"type": "goblin", "x": 121, "y": 28, "dir": -1}
+    {"type": "goblin", "x": 121, "y": 28, "dir": -1},
+    {"type": "kimiz", "x": 25, "y": 25, "power": "big"}
   ]
 }

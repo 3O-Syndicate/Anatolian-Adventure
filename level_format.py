@@ -22,6 +22,8 @@ A level is a dict:
                   tunnel         pair: two tunnels with the same pair connect
                   chest          item: one of CHEST_ITEMS
                   hint           text: the tip shown on the sign
+                  kimiz          power: one of POWERS ("big" grows the hero,
+                                 "gun" gives him the shotgun)
                 npc is the old man who wants the 33 tesbih beads (one, at the end)
 
 Old colour-mask levels (levels/<n>_mask.png) still load: they are converted
@@ -49,6 +51,7 @@ ENTITY_TYPES = {
     "health":     ({}, "any"),
     "coin":       ({}, "any"),
     "bead":       ({}, "any"),
+    "kimiz":      ({"power": "big"}, "any"),
     "tunnel":     ({"pair": 1}, "pairs"),
     "checkpoint": ({}, "any"),
     "goal":       ({}, "one"),
@@ -58,6 +61,7 @@ ENTITY_TYPES = {
     "npc":        ({}, "any"),
 }
 CHEST_ITEMS = ("acid", "shotgun", "armor")
+POWERS = ("big", "gun")
 DECOR_LAYERS = ("back", "front")
 BRICK_WALL = "brickwall"
 

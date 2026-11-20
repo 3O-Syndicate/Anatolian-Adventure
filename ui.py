@@ -85,7 +85,7 @@ class UI:
         G.screen.blit(hp_label, (bar_x + bar_width + 10, bar_y + 2))
 
     def display_ammo(self):
-        if G.player is None:
+        if G.player is None or not G.player.has_gun:
             return
         ammo_y = 48
         if G.player.is_reloading:

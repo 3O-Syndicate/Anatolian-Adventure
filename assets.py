@@ -145,6 +145,21 @@ def load_assets():
 
 	# hero animations (player/hero/<animation>/<n>.png, timings in anim.json)
 	assets['hero_meta'], assets['hero_anims'] = load_hero_animations("player/hero")
+	# the same moves without the shotgun, until a kimiz bowl gives it back
+	try:
+		with open("player/hero_unarmed/anim.json", encoding="utf-8") as f:
+			names = json.load(f)["anims"]
+		assets['hero_anims_unarmed'] = {name: import_folder(os.path.join("player/hero_unarmed", name))
+		                                for name in names}
+	except (OSError, ValueError, KeyError, pygame.error):
+		assets['hero_anims_unarmed'] = {}
+		print("Warning: unarmed hero frames not found; the hero shows his gun.")
+
+	# kimiz bowl power-up frames
+	try:
+		assets['kimiz_imgs'] = import_folder("items/kimiz")
+	except Exception:
+		assets['kimiz_imgs'] = []
 
 	try:
 		assets['muzzle_flash_imgs'] = import_folder("effects/muzzle_flash")
@@ -273,6 +288,8 @@ def load_assets():
 	G.player_image = assets['player_image']
 	G.hero_meta = assets['hero_meta']
 	G.hero_anims = assets['hero_anims']
+	G.hero_anims_unarmed = assets['hero_anims_unarmed']
+	G.kimiz_imgs = assets['kimiz_imgs']
 	G.muzzle_flash_imgs = assets['muzzle_flash_imgs']
 	G.enemy_frames = assets['enemy_frames']
 	G.coin_icon = assets['coin_icon']

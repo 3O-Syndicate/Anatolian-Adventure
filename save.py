@@ -2,7 +2,7 @@
 save.py
 
 Local progress save: the level to resume and what the player carries from
-one level to the next. The game writes it when a level starts, so resuming
+one level to the next (score, coins, beads, shop upgrades, kimiz powers). The game writes it when a level starts, so resuming
 puts the player at the start of the level they reached.
 
 The file is small JSON in the user's application data folder:
@@ -22,6 +22,8 @@ import os
 VERSION = 1
 # progress field -> key in settings.game_stats
 FIELDS = {"level": "current_level", "score": "score", "coins": "coins", "beads": "beads"}
+# optional lists kept under the same key, and the values each may hold
+LISTS = {"shop_upgrades": ("speed", "jump"), "powers": ("big", "gun")}
 
 
 def default_path():
@@ -35,8 +37,9 @@ def default_path():
 def snapshot(stats):
     """The progress fields of a game_stats dict."""
     progress = {field: stats[key] for field, key in FIELDS.items()}
-    if stats.get("shop_upgrades"):
-        progress["shop_upgrades"] = list(stats["shop_upgrades"])
+    for key in LISTS:
+        if stats.get(key):
+            progress[key] = list(stats[key])
     return progress
 
 
@@ -44,9 +47,10 @@ def apply(progress, stats):
     """Copy loaded progress into a game_stats dict."""
     for field, key in FIELDS.items():
         stats[key] = progress[field]
-    stats.pop("shop_upgrades", None)
-    if progress.get("shop_upgrades"):
-        stats["shop_upgrades"] = list(progress["shop_upgrades"])
+    for key in LISTS:
+        stats.pop(key, None)
+        if progress.get(key):
+            stats[key] = list(progress[key])
 
 
 def problem(data, level_exists=None):
@@ -60,9 +64,10 @@ def problem(data, level_exists=None):
         # bool is an int in Python; true/false is not a count
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
             return f"{field} is {value!r}, expected a whole number >= 0"
-    upgrades = data.get("shop_upgrades", [])
-    if not isinstance(upgrades, list) or any(item not in ("speed", "jump") for item in upgrades):
-        return "invalid shop upgrades"
+    for key, allowed in LISTS.items():
+        values = data.get(key, [])
+        if not isinstance(values, list) or any(item not in allowed for item in values):
+            return f"invalid {key}"
     if level_exists is not None and not level_exists(data["level"]):
         return f"level {data['level']} does not exist"
     return None
@@ -86,15 +91,16 @@ def load(path=None, level_exists=None):
     if reason:
         set_aside(path, reason)
         return None
-    return {key: data[key] for key in (*FIELDS, "shop_upgrades") if key in data}
+    return {key: data[key] for key in (*FIELDS, *LISTS) if key in data}
 
 
 def write(progress, path=None):
     """Save progress; returns False (and the game goes on) if the disk refuses."""
     path = path or default_path()
     data = {"version": VERSION, **{field: progress[field] for field in FIELDS}}
-    if progress.get("shop_upgrades"):
-        data["shop_upgrades"] = progress["shop_upgrades"]
+    for key in LISTS:
+        if progress.get(key):
+            data[key] = progress[key]
     tmp = path + ".tmp"
     try:
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)

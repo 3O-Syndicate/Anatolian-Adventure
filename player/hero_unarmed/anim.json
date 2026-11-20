@@ -1,0 +1,81 @@
+{
+  "frame_size": [
+    64,
+    64
+  ],
+  "anchor": [
+    32,
+    64
+  ],
+  "hitbox": {
+    "stand": [
+      24,
+      56
+    ],
+    "duck": [
+      24,
+      42
+    ]
+  },
+  "anims": {
+    "idle": {
+      "durations": [
+        260,
+        220,
+        260,
+        220
+      ],
+      "loop": true
+    },
+    "run": {
+      "durations": [
+        70,
+        70,
+        70,
+        70,
+        70,
+        70
+      ],
+      "loop": true
+    },
+    "jump": {
+      "durations": [
+        100
+      ],
+      "loop": false
+    },
+    "fall": {
+      "durations": [
+        120,
+        120
+      ],
+      "loop": true
+    },
+    "land": {
+      "durations": [
+        90
+      ],
+      "loop": false
+    },
+    "duck": {
+      "durations": [
+        50,
+        100
+      ],
+      "loop": false
+    },
+    "hurt": {
+      "durations": [
+        300
+      ],
+      "loop": false
+    },
+    "death": {
+      "durations": [
+        110,
+        110
+      ],
+      "loop": true
+    }
+  }
+}

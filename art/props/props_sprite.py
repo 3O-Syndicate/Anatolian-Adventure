@@ -593,7 +593,47 @@ def bead(turn):
     return c.image()
 
 
-ITEMS = {"bead": [bead(t) for t in range(4)]}
+def sparkle(c, x, y, size, colour):
+    """Four-pointed twinkle: a centre pixel with arms of the given length."""
+    pts = [(x, y)]
+    for i in range(1, size + 1):
+        pts += [(x - i, y), (x + i, y), (x, y - i), (x, y + i)]
+    c.px(colour, *pts)
+
+
+def kimiz(frame):
+    """Power-up: a wooden bowl (tostagan) full of frothy kimiz with a ladle, 32x32.
+    Frames 0-3 move a glint across the drink and twinkle two stars beside it."""
+    K = Kit(32, 32)
+    c = K.canvas()
+    YY = K.YY
+    c.draw(K.capsule((17, 14), (26, 4), 1.1), "wood", "ladle")          # ladle handle
+    c.flat(K.box(12, 27, 19, 29).mask, "wood", "foot")
+    bowl = K.ellipse(15.5, 15, 13, 12).where((YY > 15) & (YY < 28))
+    c.draw(bowl, "wood", "bowl")
+    for x in range(6, 26, 4):                                              # carved band
+        c.px(RAMPS["brass"][2], (x, 20), (x + 1, 21), (x + 2, 20))
+    c.flat(K.ellipse(15.5, 15, 13, 4.2).mask, "wood", "rim", base=3)
+    milk = K.ellipse(15.5, 15.3, 11, 3)
+    c.flat(milk.mask, "plaster", "kimiz", base=3)
+    c.px(RAMPS["plaster"][2], *[(x, 17) for x in range(9, 23)])
+    for x, y in ((8, 15), (10, 14), (12, 16), (21, 14), (23, 15), (19, 16)):  # froth
+        c.px((255, 255, 255), (x, y))
+    c.draw(K.capsule((17, 14), (19.5, 10.5), 1.1), "wood", "ladle_in")
+    gx = (9, 13, 17, 21)[frame]
+    c.px((255, 255, 255), (gx, 15), (gx + 1, 15), (gx + 1, 14))
+    image = c.image()
+    # twinkles outside the outline, so they read against the sky
+    t = Kit(32, 32).canvas()
+    big, small = (3, 1) if frame % 2 == 0 else (2, 2)
+    sparkle(t, 4, 6, big, (255, 236, 150))
+    sparkle(t, 29, 10, small, (255, 255, 255))
+    stars = t.image(outline=None)
+    stars.alpha_composite(image)
+    return stars
+
+
+ITEMS = {"bead": [bead(t) for t in range(4)], "kimiz": [kimiz(f) for f in range(4)]}
 
 
 # --------------------------------------------------------------------------

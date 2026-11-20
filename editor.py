@@ -21,7 +21,7 @@ Keys
   arrows          move the view
   Alt+click / I   pick what is under the cursor
   F               turn the enemy under the cursor around
-  + / -           change the tunnel pair or the chest item under the cursor
+  + / -           change the tunnel pair, chest item or kımız power under the cursor
   T               write the text of the hint sign under the cursor (Enter saves)
   Ctrl+Z / Ctrl+Y undo / redo
   Ctrl+arrows     resize: columns at the right edge, rows at the top
@@ -62,9 +62,10 @@ TABS = (("terrain", "Zemin"), ("decor", "Dekor"), ("entity", "Nesne"))
 ENTITY_LABELS = {
     "player": "Oyuncu", "walker": "Kaz", "turtle": "Tosbağa", "goblin": "Goblin", "health": "Can",
     "coin": "Altın", "bead": "Boncuk", "tunnel": "Tünel", "checkpoint": "Kontrol", "goal": "Bitiş",
-    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu", "npc": "Dede (NPC)",
+    "chest": "Sandık", "wallet": "Cüzdan", "hint": "İpucu", "npc": "Dede (NPC)", "kimiz": "Kımız",
 }
 ITEM_LABELS = {"acid": "Asit", "shotgun": "Tüfek", "armor": "Zırh"}
+POWER_LABELS = {"big": "Büyüme", "gun": "Tüfek"}
 TERRAIN_LABELS = {0: "Görünmez", 1: "Zemin", 2: "Toprak", 3: "Tuğla", 4: "Bulut"}
 # entities that can be painted by dragging; the rest go down one per click
 DRAG_ENTITIES = {"coin"}
@@ -95,6 +96,7 @@ class Art:
             "health": (load_image("items/health.png"), "center"),
             "coin": (load_image("items/coin/0.png"), "center"),
             "bead": (load_image("items/bead/0.png"), "center"),
+            "kimiz": (load_image("items/kimiz/0.png"), "center"),
             "tunnel": (None, "center"),
             "checkpoint": (load_image("objects/checkpoint/1.png"), "bottomleft"),
             "goal": (load_image("objects/goal/0.png"), "bottomleft"),
@@ -466,7 +468,7 @@ class Editor:
             self.change(lambda: entity.__setitem__("dir", -entity["dir"]))
 
     def change_value(self, cell, delta):
-        """+/-: renumber a tunnel's pair or step through a chest's item."""
+        """+/-: renumber a tunnel's pair, step through a chest's item or a kimiz's power."""
         entity = self.entity_under(cell) if cell else None
         if entity is None:
             return
@@ -479,6 +481,12 @@ class Editor:
             index = (current + delta) % len(items)
             self.change(lambda: entity.__setitem__("item", items[index]))
             self.message = f"Sandık: {ITEM_LABELS[entity['item']]}"
+        elif entity["type"] == "kimiz":
+            powers = level_format.POWERS
+            current = powers.index(entity["power"]) if entity.get("power") in powers else -1
+            index = (current + delta) % len(powers)
+            self.change(lambda: entity.__setitem__("power", powers[index]))
+            self.message = f"Kımız: {POWER_LABELS[entity['power']]}"
 
     def start_text_edit(self, entity):
         self.text_edit = entity
@@ -799,6 +807,9 @@ class Editor:
             if entity["type"] == "chest":
                 item = entity.get("item", "?")
                 self.draw_tag(ITEM_LABELS.get(item, item), rect.midtop)
+            elif entity["type"] == "kimiz":
+                power = entity.get("power", "?")
+                self.draw_tag(POWER_LABELS.get(power, power), rect.midtop)
             elif entity["type"] == "hint" and self.zoom >= 1:
                 text = entity.get("text") or "(boş ipucu)"
                 self.draw_tag(text if len(text) <= 32 else text[:31] + "…", rect.midtop)

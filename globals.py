@@ -25,6 +25,7 @@ coin_imgs = None
 coin_icon = None
 bead_imgs = None     # golden tesbih bead frames (items/bead)
 bead_icon = None
+kimiz_imgs = None    # kimiz bowl power-up frames (items/kimiz)
 bullet_img = None
 
 # Player image
@@ -33,6 +34,7 @@ player_image = None
 # Hero animations: anim.json data and {animation name: [frame Surfaces]}
 hero_meta = None
 hero_anims = None
+hero_anims_unarmed = None  # {animation name: frames} without the shotgun
 muzzle_flash_imgs = None
 
 # Enemy artwork: {"walker/walk": (frames facing right, frames facing left), ...}

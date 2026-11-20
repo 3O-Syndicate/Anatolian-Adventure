@@ -86,6 +86,7 @@
     {"type": "bead", "x": 129, "y": 12},
     {"type": "bead", "x": 141, "y": 13},
     {"type": "bead", "x": 154, "y": 11},
-    {"type": "bead", "x": 161, "y": 13}
+    {"type": "bead", "x": 161, "y": 13},
+    {"type": "kimiz", "x": 42, "y": 18, "power": "gun"}
   ]
 }

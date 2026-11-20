@@ -74,6 +74,7 @@ def reset_for_new_game(font, start_level=0, keep_score=False):
     game_stats["current_level"] = start_level
     if not keep_score:
         game_stats.pop("shop_upgrades", None)
+        game_stats.pop("powers", None)
         game_stats.update(coins=0, score=0, beads=0)
     return create_game_objects(font)
 
@@ -129,6 +130,7 @@ def main():
 
     def start_new_game():
         game_stats.pop("shop_upgrades", None)
+        game_stats.pop("powers", None)
         game_stats.update(coins=0, score=0, beads=0)
         start_level(0)
 

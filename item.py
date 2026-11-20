@@ -12,9 +12,10 @@ import globals as G
 from settings import *
 
 class Item(pygame.sprite.Sprite):
-    def __init__(self, pos, type):
+    def __init__(self, pos, type, power=None):
         super().__init__(G.items_group, G.all_sprites_group)
         self.type = type
+        self.power = power  # kimiz only: "big" or "gun"
         self.pos = pygame.math.Vector2(pos)
         self.timer = 0
         self.anim_timer = 0.0
@@ -27,6 +28,10 @@ class Item(pygame.sprite.Sprite):
 
         if type == "coin" and getattr(G, "coin_imgs", None) and len(G.coin_imgs) > 0:
             self.frames = [pygame.transform.rotozoom(img, 0, 1.2) for img in G.coin_imgs]
+            self.image = self.frames[0]
+            loaded = True
+        elif type == "kimiz" and getattr(G, "kimiz_imgs", None):
+            self.frames = list(G.kimiz_imgs)
             self.image = self.frames[0]
             loaded = True
         elif type == "bead" and getattr(G, "bead_imgs", None):
@@ -55,6 +60,9 @@ class Item(pygame.sprite.Sprite):
                 self.image.fill(RED)
             elif type == "coin":
                 self.image.fill(YELLOW)
+            elif type == "kimiz":
+                self.image = pygame.Surface((32, 32), pygame.SRCALPHA)
+                pygame.draw.circle(self.image, (240, 236, 220), (16, 16), 14)
             elif type == "bead":
                 self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
                 pygame.draw.circle(self.image, (222, 180, 70), (7, 7), 7)
@@ -67,7 +75,7 @@ class Item(pygame.sprite.Sprite):
     def update(self):
         # Coin spin / bead turning on its string
         if self.frames:
-            self.anim_timer += 0.25 if self.type == "coin" else 0.1
+            self.anim_timer += {"coin": 0.25, "kimiz": 0.08}.get(self.type, 0.1)
             idx = int(self.anim_timer) % len(self.frames)
             current_center = self.rect.center
             self.image = self.frames[idx]
@@ -75,7 +83,7 @@ class Item(pygame.sprite.Sprite):
 
         # Floating Animation
         self.timer += 0.1
-        offset = math.sin(self.timer) * 5
+        offset = math.sin(self.timer * (0.6 if self.type == "kimiz" else 1)) * 5
         self.rect.centery = int(self.start_y + offset)
 
         # Player Interaction
@@ -95,6 +103,10 @@ class Item(pygame.sprite.Sprite):
                 game_stats["score"] += 10
                 if getattr(G, "create_floating_text", None):
                     G.create_floating_text("+10", self.rect.center, (255, 223, 91))
+                self.kill()
+
+            elif self.type == "kimiz":
+                G.player.drink_kimiz(self.power, self.rect.center)
                 self.kill()
 
             elif self.type == "bead":
