@@ -107,7 +107,79 @@ def turtle_shell(scroll=0, streaks=False):
     return img
 
 
+def goblin(step, bob, lean, sway, arms):
+    """Hunched goblin, 32x44, facing right: long yellow hair, long warty nose,
+    pointed ear, ragged tunic, bare feet.
+
+    step: ((back foot dx, lift), (front foot dx, lift)); bob: body y offset;
+    lean: head/torso x offset (running leans forward); sway: hair tip x offset;
+    arms: (back hand dx, front hand dx) relative to the hips.
+    """
+    K = Kit(32, 44)
+    c = K.canvas()
+    skin, dark = RAMPS["goblin"], RAMPS["goblin"][0]
+    ink = RAMPS["hair"][0]
+    (fa, lift_a), (fb, lift_b) = step
+    hip_y = 32 + bob
+    hx, hy = 15 + lean, 14 + bob          # head centre
+    sx, sy = 15 + lean * 0.5, 24 + bob    # shoulders
+    # back arm and back leg
+    c.draw(K.capsule((sx - 1, sy), (16 + arms[0], sy + 6), 1.3), "goblin", "arm_back")
+    c.draw(K.capsule((13, hip_y), (12 + fa, 41 - lift_a), 1.6, 1.3), "goblin", "leg_back")
+    c.draw(K.ellipse(13.5 + fa, 42.2 - lift_a, 2.6, 1.3), "goblin", "leg_back")
+    # long yellow hair falling down the back, behind head and body
+    c.draw(K.capsule((hx - 3, hy - 4), (6 + sway, 30 + bob), 4.8, 2.6) |
+           K.capsule((hx - 1, hy - 6), (9 + sway * 0.6, 27 + bob), 3.4, 1.8),
+           "blond", "hair_back")
+    # ragged tunic
+    c.draw(K.ellipse(sx - 0.5, sy + 3, 5.8, 6.2) | K.ellipse(14.5, hip_y - 1.5, 5.4, 3.2),
+           "bark", "tunic")
+    for x in (10, 13, 16, 18):  # torn hem
+        c.px(RAMPS["bark"][0], (x, hip_y + 1), (x + 1, hip_y + 2))
+    # front leg
+    c.draw(K.capsule((16, hip_y), (16 + fb, 41 - lift_b), 1.7, 1.4), "goblin", "leg_front")
+    c.draw(K.ellipse(16.5 + fb, 42.2 - lift_b, 2.7, 1.3), "goblin", "leg_front")
+    # big head; the hair only covers the crown and the back of the skull
+    c.draw(K.ellipse(hx, hy, 7.8, 7.2), "goblin", "head")
+    c.draw(K.ellipse(hx - 2, hy - 5, 7.0, 3.6).where(K.YY < hy - 3.5) |
+           K.ellipse(hx - 6, hy - 1, 2.8, 5.5), "blond", "hair_cap")
+    for x in (int(hx) - 4, int(hx) - 1, int(hx) + 2):  # strand lines
+        c.px(RAMPS["blond"][1], (x, int(hy) - 6), (x + 1, int(hy) - 5))
+    # long pointed ear, sticking out backwards over the hair
+    c.draw(K.poly([(hx - 4, hy - 1.5), (hx - 13.5, hy - 5), (hx - 4, hy + 2.5)], tilt=-0.1),
+           "goblin", "ear")
+    c.px(dark, (int(hx) - 9, int(hy) - 3), (int(hx) - 8, int(hy) - 2))
+    # long drooping nose with warts
+    nose_tip = (min(29.5, hx + 12.5), hy + 4.5)
+    c.draw(K.capsule((hx + 5.5, hy), nose_tip, 2.4, 1.2), "goblin", "nose")
+    for x, y in ((hx + 9, hy + 1), (hx + 1.5, hy + 3)):
+        c.px(dark, (int(x), int(y)), (int(x) + 1, int(y)))
+        c.px(skin[3], (int(x), int(y) - 1))
+    # mean yellow eye under a slanted brow
+    ex, ey = int(hx + 3), int(hy - 2)
+    c.px((250, 226, 90), (ex - 1, ey), (ex, ey))
+    c.px(ink, (ex + 1, ey), (ex - 1, ey - 2), (ex, ey - 2), (ex + 1, ey - 1), (ex + 2, ey - 1))
+    # grin with one tooth, under the nose
+    my = int(hy + 4)
+    c.px(ink, *[(int(hx) - 1 + i, my + (0 if i in (0, 5) else 1)) for i in range(6)])
+    c.px((240, 236, 210), (int(hx) + 1, my))
+    # front arm hanging forward, clawed hand
+    hand = (20 + arms[1], sy + 7)
+    c.draw(K.capsule((sx + 3, sy + 1), hand, 1.5, 1.3), "goblin", "arm_front")
+    c.draw(K.ellipse(hand[0] + 0.5, hand[1] + 0.5, 1.9, 1.7), "goblin", "arm_front")
+    c.px(dark, (int(hand[0]) + 2, int(hand[1]) + 2), (int(hand[0]), int(hand[1]) + 2))
+    return c.image()
+
+
 ENEMIES = {
+    "goblin/walk": [goblin(((-3, 0), (3, 0)), 0, 0, 0, (2, -3)),
+                    goblin(((-1, 1), (1, 0)), -1, 0, 1, (0, -1)),
+                    goblin(((3, 0), (-3, 0)), 0, 0, 0, (-3, 2)),
+                    goblin(((1, 0), (-1, 1)), -1, 0, 1, (-1, 0))],
+    "goblin/run": [goblin(((-5, 0), (5, 1)), 0, 1, -2, (6, -2)),
+                   goblin(((-2, 2), (2, 0)), -1, 1, -3, (7, 1)),
+                   goblin(((5, 1), (-5, 0)), 0, 1, -2, (6, -2)),
+                   goblin(((2, 0), (-2, 2)), -1, 1, -3, (7, 1))],
     "walker/walk": [goose(((-2, 0), (2, 0)), 0, 0),
                     goose(((0, 2), (0, 0)), -1, 1),
                     goose(((2, 0), (-2, 0)), 0, 0),

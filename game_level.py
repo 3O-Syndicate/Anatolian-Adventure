@@ -2,7 +2,7 @@
 import os
 import pygame
 from item import Item
-from enemy import WalkingEnemy, TurtleEnemy
+from enemy import WalkingEnemy, TurtleEnemy, GoblinEnemy
 from settings import WIDTH, HEIGHT, TILESIZE, import_folder
 from terrain import TileTextures
 from ui import FloatingText
@@ -153,6 +153,8 @@ class GameLevel:
             elif kind == "turtle":
                 self.turtle_spawn_pos.append(pos)
                 TurtleEnemy(pos, entity.get("dir", -1))
+            elif kind == "goblin":
+                GoblinEnemy(pos, entity.get("dir", -1))
             elif kind in ("checkpoint", "goal", "chest", "wallet"):
                 frames = objects[kind] or [self.placeholder((TILESIZE, 2 * TILESIZE))]
                 obj = LevelObject(frames, (x, y), kind=kind)

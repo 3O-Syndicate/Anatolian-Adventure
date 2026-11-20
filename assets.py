@@ -64,7 +64,8 @@ def play_bgm(path="sounds/Tiled_Rooftop_Dash.mp3", volume_ratio=0.25):
 
 HERO_ANIMATIONS = ("idle", "run", "jump", "fall", "land", "duck", "shoot",
                    "duck_shoot", "reload", "hurt", "death")
-ENEMY_ANIMATIONS = ("walker/walk", "turtle/walk", "turtle/shell", "turtle/spin")
+ENEMY_ANIMATIONS = ("walker/walk", "turtle/walk", "turtle/shell", "turtle/spin",
+                    "goblin/walk", "goblin/run")
 
 def placeholder_hero_animations():
 	"""Single green frame for every hero animation, used when frames are missing."""
