@@ -254,7 +254,7 @@ class Player(pygame.sprite.Sprite):
 
         can_jump = (self.on_ground or self.coyote_timer > 0) and not self.is_ducking
         if self.jump_buffer_timer > 0 and can_jump:
-            self.velocity_y = -30
+            self.velocity_y = -20
             self.on_ground = False
             self.coyote_timer = 0
             self.jump_buffer_timer = 0

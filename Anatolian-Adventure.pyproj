@@ -1,0 +1,199 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{af246ebb-6707-47e4-9a6c-a7375a33eea1}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>main.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>Global|PythonCore|3.15</InterpreterId>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="bullet\0.png" />
+    <Content Include="bullet\1.png" />
+    <Content Include="decor\bush.png" />
+    <Content Include="decor\cloud.png" />
+    <Content Include="decor\fence.png" />
+    <Content Include="decor\flowers.png" />
+    <Content Include="decor\grass.png" />
+    <Content Include="decor\rock.png" />
+    <Content Include="decor\sign.png" />
+    <Content Include="decor\tree.png" />
+    <Content Include="effects\muzzle_flash\0.png" />
+    <Content Include="effects\muzzle_flash\1.png" />
+    <Content Include="effects\muzzle_flash\2.png" />
+    <Content Include="enemies\goblin\run\0.png" />
+    <Content Include="enemies\goblin\run\1.png" />
+    <Content Include="enemies\goblin\run\2.png" />
+    <Content Include="enemies\goblin\run\3.png" />
+    <Content Include="enemies\goblin\walk\0.png" />
+    <Content Include="enemies\goblin\walk\1.png" />
+    <Content Include="enemies\goblin\walk\2.png" />
+    <Content Include="enemies\goblin\walk\3.png" />
+    <Content Include="enemies\turtle\shell\0.png" />
+    <Content Include="enemies\turtle\spin\0.png" />
+    <Content Include="enemies\turtle\spin\1.png" />
+    <Content Include="enemies\turtle\spin\2.png" />
+    <Content Include="enemies\turtle\spin\3.png" />
+    <Content Include="enemies\turtle\walk\0.png" />
+    <Content Include="enemies\turtle\walk\1.png" />
+    <Content Include="enemies\turtle\walk\2.png" />
+    <Content Include="enemies\turtle\walk\3.png" />
+    <Content Include="enemies\walker\walk\0.png" />
+    <Content Include="enemies\walker\walk\1.png" />
+    <Content Include="enemies\walker\walk\2.png" />
+    <Content Include="enemies\walker\walk\3.png" />
+    <Content Include="items\bead\0.png" />
+    <Content Include="items\bead\1.png" />
+    <Content Include="items\bead\2.png" />
+    <Content Include="items\bead\3.png" />
+    <Content Include="items\coin\0.png" />
+    <Content Include="items\coin\1.png" />
+    <Content Include="items\coin\10.png" />
+    <Content Include="items\coin\11.png" />
+    <Content Include="items\coin\12.png" />
+    <Content Include="items\coin\13.png" />
+    <Content Include="items\coin\2.png" />
+    <Content Include="items\coin\3.png" />
+    <Content Include="items\coin\4.png" />
+    <Content Include="items\coin\5.png" />
+    <Content Include="items\coin\6.png" />
+    <Content Include="items\coin\7.png" />
+    <Content Include="items\coin\8.png" />
+    <Content Include="items\coin\9.png" />
+    <Content Include="items\health.png" />
+    <Content Include="levels\2_mask.png" />
+    <Content Include="objects\checkpoint\0.png" />
+    <Content Include="objects\checkpoint\1.png" />
+    <Content Include="objects\chest\0.png" />
+    <Content Include="objects\chest\1.png" />
+    <Content Include="objects\goal\0.png" />
+    <Content Include="objects\goal\1.png" />
+    <Content Include="objects\npc\0.png" />
+    <Content Include="objects\npc\1.png" />
+    <Content Include="objects\wallet\0.png" />
+    <Content Include="player\0.png" />
+    <Content Include="player\0old.png" />
+    <Content Include="player\hero\death\0.png" />
+    <Content Include="player\hero\death\1.png" />
+    <Content Include="player\hero\duck\0.png" />
+    <Content Include="player\hero\duck\1.png" />
+    <Content Include="player\hero\duck_shoot\0.png" />
+    <Content Include="player\hero\duck_shoot\1.png" />
+    <Content Include="player\hero\fall\0.png" />
+    <Content Include="player\hero\fall\1.png" />
+    <Content Include="player\hero\hurt\0.png" />
+    <Content Include="player\hero\idle\0.png" />
+    <Content Include="player\hero\idle\1.png" />
+    <Content Include="player\hero\idle\2.png" />
+    <Content Include="player\hero\idle\3.png" />
+    <Content Include="player\hero\jump\0.png" />
+    <Content Include="player\hero\land\0.png" />
+    <Content Include="player\hero\reload\0.png" />
+    <Content Include="player\hero\reload\1.png" />
+    <Content Include="player\hero\reload\2.png" />
+    <Content Include="player\hero\reload\3.png" />
+    <Content Include="player\hero\reload\4.png" />
+    <Content Include="player\hero\run\0.png" />
+    <Content Include="player\hero\run\1.png" />
+    <Content Include="player\hero\run\2.png" />
+    <Content Include="player\hero\run\3.png" />
+    <Content Include="player\hero\run\4.png" />
+    <Content Include="player\hero\run\5.png" />
+    <Content Include="player\hero\shoot\0.png" />
+    <Content Include="player\hero\shoot\1.png" />
+    <Content Include="requirements.txt" />
+    <Content Include="sounds\volume_icon.jpg" />
+    <Content Include="tiles\4.png" />
+    <Content Include="tiles\brick.png" />
+    <Content Include="tiles\ground.png" />
+    <Content Include="tiles\groundold.png" />
+    <Content Include="tiles\underground.png" />
+    <Content Include="tiles\underground1.png" />
+    <Content Include="tiles\undergroundold.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="acid.py" />
+    <Compile Include="art\hero\hero_sprite.py" />
+    <Compile Include="art\pixelkit.py" />
+    <Compile Include="art\props\props_sprite.py" />
+    <Compile Include="assets.py" />
+    <Compile Include="bullet.py" />
+    <Compile Include="button.py" />
+    <Compile Include="cage.py" />
+    <Compile Include="editor.py" />
+    <Compile Include="enemy.py" />
+    <Compile Include="game_level.py" />
+    <Compile Include="globals.py" />
+    <Compile Include="item.py" />
+    <Compile Include="level_format.py" />
+    <Compile Include="main.py" />
+    <Compile Include="player.py" />
+    <Compile Include="save.py" />
+    <Compile Include="settings.py" />
+    <Compile Include="terrain.py" />
+    <Compile Include="tests\test_gameplay.py" />
+    <Compile Include="tests\test_levels.py" />
+    <Compile Include="tests\test_save.py" />
+    <Compile Include="ui.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="art" />
+    <Folder Include="art\hero" />
+    <Folder Include="art\props" />
+    <Folder Include="bullet" />
+    <Folder Include="decor" />
+    <Folder Include="effects\" />
+    <Folder Include="effects\muzzle_flash" />
+    <Folder Include="enemies\" />
+    <Folder Include="enemies\goblin\" />
+    <Folder Include="enemies\goblin\run" />
+    <Folder Include="enemies\goblin\walk" />
+    <Folder Include="enemies\turtle\" />
+    <Folder Include="enemies\turtle\shell" />
+    <Folder Include="enemies\turtle\spin" />
+    <Folder Include="enemies\turtle\walk" />
+    <Folder Include="enemies\walker\" />
+    <Folder Include="enemies\walker\walk" />
+    <Folder Include="items" />
+    <Folder Include="items\bead" />
+    <Folder Include="items\coin" />
+    <Folder Include="levels" />
+    <Folder Include="objects\" />
+    <Folder Include="objects\checkpoint" />
+    <Folder Include="objects\chest" />
+    <Folder Include="objects\goal" />
+    <Folder Include="objects\npc" />
+    <Folder Include="objects\wallet" />
+    <Folder Include="player" />
+    <Folder Include="player\hero\" />
+    <Folder Include="player\hero\death" />
+    <Folder Include="player\hero\duck" />
+    <Folder Include="player\hero\duck_shoot" />
+    <Folder Include="player\hero\fall" />
+    <Folder Include="player\hero\hurt" />
+    <Folder Include="player\hero\idle" />
+    <Folder Include="player\hero\jump" />
+    <Folder Include="player\hero\land" />
+    <Folder Include="player\hero\reload" />
+    <Folder Include="player\hero\run" />
+    <Folder Include="player\hero\shoot" />
+    <Folder Include="sounds" />
+    <Folder Include="tests" />
+    <Folder Include="tiles" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.15" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>
